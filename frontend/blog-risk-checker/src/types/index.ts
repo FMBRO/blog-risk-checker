@@ -1,0 +1,174 @@
+// 設定関連の型
+export type PublishScope = 'public' | 'unlisted' | 'private' | 'internal';
+export type Tone = 'technical' | 'casual' | 'formal';
+export type Audience = 'engineers' | 'general' | 'executives';
+export type RedactMode = 'none' | 'light' | 'strict';
+
+// 判定・重要度の型
+export type Verdict = 'ok' | 'warn' | 'bad';
+export type Severity = 'low' | 'medium' | 'high' | 'critical';
+
+// チェック設定
+export interface CheckSettings {
+  publishScope: PublishScope;
+  tone: Tone;
+  audience: Audience;
+  redactMode: RedactMode;
+}
+
+// 範囲（テキスト内の位置）
+export interface Range {
+  start: number;
+  end: number;
+  context: string;
+}
+
+// ハイライト情報
+export interface Highlight {
+  findingId: string;
+  start: number;
+  end: number;
+}
+
+export interface HighlightGroup {
+  items: Highlight[];
+}
+
+// 個別の指摘
+export interface Finding {
+  id: string;
+  category: 'security' | 'privacy' | 'legal' | 'compliance' | 'tone' | 'quality';
+  severity: Severity;
+  title: string;
+  reason: string;
+  suggestion: string;
+  ranges: Range[];
+}
+
+// レポート全体
+// レポート全体
+export interface ReportSummary {
+  totalFindings: number;
+  bySeverity: {
+    low: number;
+    medium: number;
+    high: number;
+    critical: number;
+  };
+  byCategory: Record<string, number>;
+}
+
+export interface Report {
+  verdict: Verdict;
+  score: number;
+  summary: ReportSummary;
+  findings: Finding[];
+  highlights: HighlightGroup;
+}
+
+// Patch適用結果
+export interface PatchResult {
+  apply: {
+    replaceRange: {
+      start: number;
+      end: number;
+      text: string;
+    };
+  };
+}
+
+// Release結果
+export interface ReleaseResult {
+  safeMarkdown: string;
+  fixSummary: string;
+  checklist: string[];
+}
+
+// Personaレビュー
+export interface PersonaReviewItem {
+  id: string;
+  category: string;
+  severity: Severity;
+  title: string;
+  reason: string;
+  suggestion: string;
+}
+
+export interface PersonaReview {
+  persona: string;
+  items: PersonaReviewItem[];
+}
+
+// APIエラー
+export interface ApiError {
+  detail: {
+    message: string;
+    code?: string;
+  };
+}
+
+// UI用のSeverityフィルタ
+export type SeverityFilter = 'all' | 'high' | 'low';
+
+// タブ種別
+export type TabType = 'findings' | 'persona';
+
+// チェック状態
+export type CheckStatus = 'idle' | 'running' | 'success' | 'error';
+
+// Zustand Store用のAppState
+export interface AppState {
+  // ドキュメント情報
+  projectName: string;
+  docTitle: string;
+  isAutosaved: boolean;
+
+  // 設定
+  settings: CheckSettings;
+
+  // エディタ
+  editorText: string;
+
+  // チェック結果
+  checkId: string | null;
+  report: Report | null;
+  checkStatus: CheckStatus;
+  errorMessage: string | null;
+
+  // UI状態
+  activeTab: TabType;
+  severityFilter: SeverityFilter;
+  selectedFindingId: string | null;
+  collapsedFindingIds: Set<string>;
+  settingsExpanded: boolean;
+
+  // Persona
+  personaResult: PersonaReview | null;
+  personaStatus: CheckStatus;
+
+  // Actions
+  setProjectName: (name: string) => void;
+  setDocTitle: (title: string) => void;
+  setEditorText: (text: string) => void;
+  setSettings: (settings: Partial<CheckSettings>) => void;
+  setActiveTab: (tab: TabType) => void;
+  setSeverityFilter: (filter: SeverityFilter) => void;
+  selectFinding: (id: string | null) => void;
+  toggleFindingCollapse: (id: string) => void;
+  toggleSettingsExpanded: () => void;
+
+  // Async Actions
+  runCheck: () => Promise<void>;
+  runRecheck: () => Promise<void>;
+  applyPatch: (findingId: string) => Promise<void>;
+  runPersonaReview: (persona: string) => Promise<void>;
+  runRelease: () => Promise<ReleaseResult | null>;
+
+  // State setters for async operations
+  setCheckStatus: (status: CheckStatus) => void;
+  setReport: (report: Report | null) => void;
+  setCheckId: (id: string | null) => void;
+  setErrorMessage: (message: string | null) => void;
+  setPersonaResult: (result: PersonaReview | null) => void;
+  setPersonaStatus: (status: CheckStatus) => void;
+}
