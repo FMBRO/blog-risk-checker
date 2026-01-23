@@ -16,22 +16,18 @@ export interface CheckSettings {
   redactMode: RedactMode;
 }
 
-// 範囲（テキスト内の位置）
-export interface Range {
-  start: number;
-  end: number;
-  context: string;
-}
-
 // ハイライト情報
 export interface Highlight {
-  findingId: string;
-  start: number;
-  end: number;
+  text: string;
+  context?: string;
 }
 
 export interface HighlightGroup {
-  items: Highlight[];
+  mode: 'text';
+  items: {
+    findingId: string;
+    text: string;
+  }[];
 }
 
 // 個別の指摘
@@ -42,10 +38,9 @@ export interface Finding {
   title: string;
   reason: string;
   suggestion: string;
-  ranges: Range[];
+  highlights: Highlight[];
 }
 
-// レポート全体
 // レポート全体
 export interface ReportSummary {
   totalFindings: number;
@@ -69,18 +64,16 @@ export interface Report {
 // Patch適用結果
 export interface PatchResult {
   apply: {
-    replaceRange: {
-      start: number;
-      end: number;
-      text: string;
-    };
+    mode: 'replaceText';
+    originalText: string;
+    replacement: string;
   };
 }
 
 // Release結果
 export interface ReleaseResult {
   safeMarkdown: string;
-  fixSummary: string;
+  fixSummary: string[]; // API returns list of strings
   checklist: string[];
 }
 

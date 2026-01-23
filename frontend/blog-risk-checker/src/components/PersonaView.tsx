@@ -8,14 +8,20 @@ export function PersonaView() {
     personaStatus,
     runPersonaReview,
     activeTab,
+    activePersona,
   } = useAppStore();
 
-  // タブがアクティブになったら自動でペルソナレビューを実行
+  // タブがアクティブになったら自動でペルソナレビューを実行 (activePersonaの変更も監視)
   useEffect(() => {
-    if (activeTab === 'persona' && !personaResult && personaStatus === 'idle') {
-      runPersonaReview('general');
+    if (activeTab === 'persona') {
+      if (!personaResult || personaResult.persona !== activePersona) {
+        if (personaStatus === 'idle') {
+          console.log('[PersonaView] Running review for persona:', activePersona);
+          runPersonaReview(activePersona);
+        }
+      }
     }
-  }, [activeTab, personaResult, personaStatus, runPersonaReview]);
+  }, [activeTab, personaResult, personaStatus, runPersonaReview, activePersona]);
 
   if (personaStatus === 'running') {
     return (

@@ -24,7 +24,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -71,46 +71,14 @@ def pretty(obj: Any) -> str:
 # -------------------------
 # Markdown apply patch
 # -------------------------
-def apply_replace_range(text: str, start: int, end: int, replacement: str) -> str:
-    if start < 0 or end < 0 or start > len(text) or end > len(text):
-        raise ValueError(f"invalid range start={start} end={end} len={len(text)}")
-    if end < start:
-        start, end = end, start
-    return text[:start] + replacement + text[end:]
-
-
-def calc_delta(start: int, end: int, replacement: str) -> int:
-    return len(replacement) - (end - start)
-
-
-def adjust_remaining_ranges(
-    findings: List[Dict[str, Any]],
-    current_index: int,
-    applied_start: int,
-    applied_end: int,
-    delta: int,
-) -> None:
+def apply_replace_text(text: str, original_text: str, replacement: str) -> str:
     """
-    先に適用した置換の文字数差(delta)を、後続 finding の start/end に反映する。
-    - applied_end より後ろにある range は一律で delta だけシフト
-    - 交差する range は精密に扱わず、MVPとして context のみ残す（rangeは維持/クランプ）
+    text 内の original_text を replacement に置換する（最初の1件のみ）。
     """
-    for i in range(current_index + 1, len(findings)):
-        for r in findings[i].get("ranges", []) or []:
-            s = int(r.get("start", 0))
-            e = int(r.get("end", 0))
-            # 完全に後ろ
-            if s >= applied_end:
-                r["start"] = s + delta
-                r["end"] = e + delta
-            # 完全に前
-            elif e <= applied_start:
-                continue
-            # 交差
-            else:
-                # 交差は保守的に clamping（細かい整合は recheck が拾う想定）
-                r["start"] = max(0, min(s, e))
-                r["end"] = max(0, max(s, e))
+    if original_text not in text:
+        print(f"[warn] original_text not found in text: {original_text[:50]}...")
+        return text
+    return text.replace(original_text, replacement, 1)
 
 
 # -------------------------
@@ -174,28 +142,19 @@ def run_flow(text: str, cfg: FlowConfig) -> None:
             patch_res = post_json(cfg.base_url, "/v1/patches", patch_req)
 
             apply = patch_res.get("apply", {})
-            if apply.get("mode") != "replaceRange":
+            if apply.get("mode") != "replaceText":
                 print(f"[warn] unsupported apply mode: {apply}")
                 continue
 
-            start = int(apply["start"])
-            end = int(apply["end"])
+            original_text = str(apply["originalText"])
             replacement = str(apply["replacement"])
 
-            before_len = len(working_text)
-            before_snip = working_text[start:end]
-
-            working_text = apply_replace_range(working_text, start, end, replacement)
-
-            delta = len(working_text) - before_len
-            adjust_remaining_ranges(findings, idx, start, end, delta)
+            working_text = apply_replace_text(working_text, original_text, replacement)
 
             print(pretty({
                 "findingId": fid,
-                "range": {"start": start, "end": end},
-                "beforePreview": before_snip[:80],
+                "beforePreview": original_text[:80],
                 "afterPreview": replacement[:80],
-                "deltaChars": delta,
             }))
 
     # 4) recheck

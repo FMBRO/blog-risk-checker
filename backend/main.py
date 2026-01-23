@@ -169,14 +169,6 @@ def pick_finding(report: Dict[str, Any], finding_id: str) -> Optional[Dict[str, 
     return None
 
 
-def clamp_range(start: int, end: int, n: int) -> tuple[int, int]:
-    s = max(0, min(start, n))
-    e = max(0, min(end, n))
-    if e < s:
-        s, e = e, s
-    return s, e
-
-
 # =========================
 # Schemas (Gemini structured output)
 # =========================
@@ -214,37 +206,35 @@ REPORT_SCHEMA: Dict[str, Any] = {
                     "title": {"type": "STRING"},
                     "reason": {"type": "STRING"},
                     "suggestion": {"type": "STRING"},
-                    "ranges": {
+                    "highlights": {
                         "type": "ARRAY",
                         "items": {
                             "type": "OBJECT",
                             "properties": {
-                                "start": {"type": "INTEGER", "minimum": 0},
-                                "end": {"type": "INTEGER", "minimum": 0},
+                                "text": {"type": "STRING"},
                                 "context": {"type": "STRING"},
                             },
-                            "required": ["start", "end", "context"],
+                            "required": ["text", "context"],
                         },
                     },
                     "tags": {"type": "ARRAY", "items": {"type": "STRING"}},
                 },
-                "required": ["id", "category", "severity", "title", "reason", "suggestion", "ranges"],
+                "required": ["id", "category", "severity", "title", "reason", "suggestion", "highlights"],
             },
         },
         "highlights": {
             "type": "OBJECT",
             "properties": {
-                "mode": {"type": "STRING", "enum": ["ranges"]},
+                "mode": {"type": "STRING", "enum": ["text"]},
                 "items": {
                     "type": "ARRAY",
                     "items": {
                         "type": "OBJECT",
                         "properties": {
                             "findingId": {"type": "STRING"},
-                            "start": {"type": "INTEGER", "minimum": 0},
-                            "end": {"type": "INTEGER", "minimum": 0},
+                            "text": {"type": "STRING"},
                         },
-                        "required": ["findingId", "start", "end"],
+                        "required": ["findingId", "text"],
                     },
                 },
             },
@@ -257,12 +247,11 @@ REPORT_SCHEMA: Dict[str, Any] = {
 PATCH_GEN_SCHEMA: Dict[str, Any] = {
     "type": "OBJECT",
     "properties": {
+        "originalText": {"type": "STRING"},
         "replacement": {"type": "STRING"},
         "note": {"type": "STRING"},
-        "start": {"type": "INTEGER", "minimum": 0},
-        "end": {"type": "INTEGER", "minimum": 0},
     },
-    "required": ["replacement", "start", "end"],
+    "required": ["originalText", "replacement"],
 }
 
 RELEASE_SCHEMA: Dict[str, Any] = {
@@ -308,20 +297,19 @@ PERSONA_SCHEMA: Dict[str, Any] = {
                     "title": {"type": "STRING"},
                     "reason": {"type": "STRING"},
                     "suggestion": {"type": "STRING"},
-                    "ranges": {
+                    "highlights": {
                         "type": "ARRAY",
                         "items": {
                             "type": "OBJECT",
                             "properties": {
-                                "start": {"type": "INTEGER", "minimum": 0},
-                                "end": {"type": "INTEGER", "minimum": 0},
+                                "text": {"type": "STRING"},
                                 "context": {"type": "STRING"},
                             },
-                            "required": ["start", "end", "context"],
+                            "required": ["text", "context"],
                         },
                     },
                 },
-                "required": ["id", "severity", "title", "reason", "suggestion", "ranges"],
+                "required": ["id", "severity", "title", "reason", "suggestion", "highlights"],
             },
         },
     },
@@ -348,7 +336,7 @@ MOCK_REPORT = {
             "title": "個人情報の具体性が高い",
             "reason": "氏名と所属を併記しているため、個人特定の可能性が高い。",
             "suggestion": "氏名を伏せ、所属は業界カテゴリに置換する。",
-            "ranges": [{"start": 10, "end": 30, "context": "..."}],
+            "highlights": [{"text": "山田太郎（株式会社ABC）", "context": "..."}],
             "tags": ["pii", "identification"],
         },
         {
@@ -358,15 +346,15 @@ MOCK_REPORT = {
             "title": "内部URLの公開",
             "reason": "社内ホスト名が含まれている。",
             "suggestion": "ドメインを example.com に置換する。",
-            "ranges": [{"start": 60, "end": 90, "context": "..."}],
+            "highlights": [{"text": "internal.corp.example.net", "context": "..."}],
             "tags": ["internal"],
         },
     ],
     "highlights": {
-        "mode": "ranges",
+        "mode": "text",
         "items": [
-            {"findingId": "f_001", "start": 10, "end": 30},
-            {"findingId": "f_002", "start": 60, "end": 90},
+            {"findingId": "f_001", "text": "山田太郎（株式会社ABC）"},
+            {"findingId": "f_002", "text": "internal.corp.example.net"},
         ],
     },
 }
@@ -382,7 +370,7 @@ MOCK_PERSONA = {
             "title": "鍵情報の記載に注意",
             "reason": "値の貼り付け誘発につながる。",
             "suggestion": "値は貼らない注意書きを追加する。",
-            "ranges": [{"start": 20, "end": 50, "context": "..."}],
+            "highlights": [{"text": "API_KEY=xxxxx", "context": "..."}],
         }
     ],
 }
@@ -403,15 +391,15 @@ CHECK_SYSTEM = """
 入力Markdownを精査し、個人情報・セキュリティ・法務/コンプライアンスの観点で指摘を作成してください。
 返答は response_schema に厳密に従い、JSONのみを返してください。
 severity は low/medium/high/critical を使ってください。
-ranges は文字オフセット（start,end）です。context は短い抜粋です。
-highlights.items は findings の ranges と対応させてください（findingId,start,end）。
+findings.highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
+highlights.items は findings の highlights と対応させてください（findingId, text）。
 """
 
 PATCH_SYSTEM = """
 あなたは文章修正パッチ生成器です。
-入力として Markdown 全文、指摘（finding）、および推奨レンジが与えられます。
-返答は JSON のみです。replacement はレンジ置換の新しい文字列です。
-start/end は返答にも含め、レンジは可能な限り元の値を維持してください。
+入力として Markdown 全文、指摘（finding）、および問題のあるテキストが与えられます。
+返答は JSON のみです。originalText は置換対象の原文、replacement は置換後の新しい文字列です。
+originalText は入力テキスト内に存在する文字列と完全一致させてください。
 """
 
 RELEASE_SYSTEM = """
@@ -423,7 +411,8 @@ RELEASE_SYSTEM = """
 PERSONA_SYSTEM = """
 あなたはペルソナ別レビューアです。
 persona に応じた観点で Markdown を評価し、指摘を items に列挙してください。
-返答は JSON のみです。severity と ranges は仕様通りです。
+返答は JSON のみです。severity は仕様通りです。
+highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
 """
 
 
@@ -497,11 +486,10 @@ async def create_patch(req: PatchRequest):
             "findingId": req.findingId,
             "before": "Before ...",
             "after": "After ...",
-            "range": {"start": 0, "end": 10},
-            "apply": {"mode": "replaceRange", "start": 0, "end": 10, "replacement": "After ..."},
+            "apply": {"mode": "replaceText", "originalText": "Before ...", "replacement": "After ..."},
         }
 
-    # 優先: 保存済み report から finding/range を取る
+    # 優先: 保存済み report から finding を取る
     saved = CHECK_STORE.get(req.checkId)
     finding = None
     report = None
@@ -513,33 +501,28 @@ async def create_patch(req: PatchRequest):
     if not finding:
         raise http_error(404, "NOT_FOUND", "findingId not found for this checkId")
 
-    # 1st range を採用（UIも基本1つ目を使う想定）
-    r0 = finding["ranges"][0]
-    start, end = clamp_range(int(r0["start"]), int(r0["end"]), len(req.text))
-    before = req.text[start:end]
+    # 1st highlight を採用（UIも基本1つ目を使う想定）
+    h0 = finding["highlights"][0]
+    original_text = h0["text"]
 
     patch_prompt = (
         f"[checkId]\n{req.checkId}\n\n"
         f"[finding]\n{json.dumps(finding, ensure_ascii=False)}\n\n"
-        f"[range]\nstart={start}, end={end}\n\n"
-        f"[before]\n{before}\n\n"
+        f"[originalText]\n{original_text}\n\n"
         f"[full_markdown]\n{req.text}\n"
     )
 
     gen = await gemini_json(PATCH_SYSTEM, patch_prompt, PATCH_GEN_SCHEMA)
 
-    # モデルが範囲を書き換えた場合も clamp する
-    ms, me = clamp_range(int(gen["start"]), int(gen["end"]), len(req.text))
+    original = str(gen["originalText"])
     replacement = str(gen["replacement"])
-    before2 = req.text[ms:me]
 
     return {
         "patchId": new_patch_id(),
         "findingId": req.findingId,
-        "before": before2,
+        "before": original,
         "after": replacement,
-        "range": {"start": ms, "end": me},
-        "apply": {"mode": "replaceRange", "start": ms, "end": me, "replacement": replacement},
+        "apply": {"mode": "replaceText", "originalText": original, "replacement": replacement},
     }
 
 

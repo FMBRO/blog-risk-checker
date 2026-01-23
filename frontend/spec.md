@@ -83,7 +83,7 @@ frontend
 
 ### 編集仕様
 - プレーンMarkdown入力（MVPは最低限）
-- ハイライトは「チェック結果の ranges / highlights」に基づきオーバーレイ表示
+- ハイライトは「チェック結果の highlights.items」に基づきテキスト検索でオーバーレイ表示
 - カーソル位置とハイライト表示の整合が必要（CodeMirror / Monaco 等を想定）
 
 ### ハイライト仕様
@@ -135,7 +135,7 @@ frontend
 
 ### 選択状態（推奨）
 - 選択カードは背景を強調
-- 選択に連動して左エディタの該当rangeへスクロールし、強調表示する
+- 選択に連動して左エディタの該当テキスト箇所へスクロールし、強調表示する
 
 ---
 
@@ -153,7 +153,7 @@ frontend
   - `title: string`
   - `reason: string`
   - `suggestion: string`
-  - `ranges[]: { startLine: number, startCol: number, endLine: number, endCol: number }`
+  - `highlights[]: { text: string, context: string }`
   - `collapsed: boolean`（UI状態）
 - `persona`（右タブ用）
   - `activePersonaId`
@@ -197,7 +197,7 @@ frontend
   - `collapsed` 切替
 - `onSelectFinding(id)`
   - `selectedFindingId` 更新
-  - エディタ側で該当rangeへスクロールし、強調表示する
+  - エディタ側で該当テキスト箇所へスクロールし、強調表示する
 
 ---
 
@@ -211,7 +211,7 @@ frontend
   - `MainSplitPane`
     - `EditorPane`
       - `SettingsBar`
-      - `MarkdownEditor`（行番号 + rangesハイライト）
+      - `MarkdownEditor`（行番号 + テキスト一致ハイライト）
     - `ResultsPane`
       - `Tabs`（Findings / Persona）
       - `FindingsView`
@@ -309,7 +309,7 @@ frontend
 ### 14.3 POST `/v1/patches`（修正パッチ生成）
 #### 用途
 - 指摘カードの「提案適用（Apply）」で呼ぶ。
-- 返却の `apply` をエディタに反映する（`replaceRange`）。
+- 返却の `apply` をエディタに反映する（`replaceText`）。
 
 #### Request
 - `checkId: string`（必須）
@@ -324,11 +324,11 @@ frontend
   "findingId": "f_001",
   "before": "...",
   "after": "...",
-  "range": {"start": 10, "end": 30},
-  "apply": {"mode": "replaceRange", "start": 10, "end": 30, "replacement": "..."}
+  "apply": {"mode": "replaceText", "originalText": "...", "replacement": "..."}
 }
+```
 
-UI制御
+#### UI制御
 
 checkId が無い場合：Patch操作はdisabled（MVP）
 
@@ -337,8 +337,6 @@ checkId が無い場合：Patch操作はdisabled（MVP）
 成功：エディタに適用 → recheck を促す（自動でも手動でもよい）
 
 失敗：カード内にエラー（message表示）
-
-
 
 ---
 
@@ -437,9 +435,10 @@ summary.totalFindings: number
 
 summary.bySeverity: { low, medium, high, critical }
 
-findings[]: { id, category, severity, title, reason, suggestion, ranges[], tags? }
+findings[]: { id, category, severity, title, reason, suggestion, highlights[], tags? }
+  - highlights[]: { text, context }
 
-highlights: { mode: "ranges", items: [{ findingId, start, end }] }
+highlights: { mode: "text", items: [{ findingId, text }] }
 
 
 PersonaReview（/v1/persona-review）
@@ -452,7 +451,8 @@ summary.total
 
 summary.bySeverity
 
-items[]: { id, severity, title, reason, suggestion, ranges[] }
+items[]: { id, severity, title, reason, suggestion, highlights[] }
+  - highlights[]: { text, context }
 
 
 
@@ -480,18 +480,18 @@ All：全件
 
 17. ハイライト適用仕様（Editor）
 
-レンジ仕様
+テキスト一致仕様
 
-APIの ranges.start/end と highlights.items.start/end は文字オフセット（0..len(text)）
+APIの highlights.items.text は問題箇所の原文テキスト
 
-Reactエディタで (line,col) が必要な場合は変換が必要
+フロントエンドはテキスト検索（indexOf等）で該当箇所を特定しハイライト表示
 
-MVPは「オフセットベースのデコレーション」を使う（CodeMirror6 / Monaco で対応可能）
+同一テキストが複数存在する場合は全てハイライト（または最初の1件のみ）
 
 
 表示優先
 
-report.highlights.items を描画の正とする（finding.rangesと重複しても items を優先）
+report.highlights.items を描画の正とする（finding.highlightsと重複しても items を優先）
 
 
 選択連動
@@ -523,7 +523,7 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 1. 指摘カードのApply → POST /v1/patches
 
 
-2. apply.replaceRange を draftText に反映
+2. apply.replaceText を draftText に反映（originalText を replacement で置換）
 
 
 3. 再チェック → POST /v1/checks/{checkId}/recheck
@@ -602,6 +602,7 @@ fastapi>=0.110
 uvicorn[standard]>=0.27
 pydantic>=2.6
 google-genai>=0.3
+python-dotenv>=1.0
 
 
 ---
@@ -615,6 +616,9 @@ from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel, Field
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from google import genai
 from google.genai import types
@@ -751,10 +755,21 @@ async def gemini_json(system_instruction: str, user_prompt: str, schema: Dict[st
             ),
         )
         return json.loads(resp.text)
+
     except json.JSONDecodeError:
         raise http_error(502, "BAD_MODEL_OUTPUT", "Model returned non-JSON output")
+
     except Exception as e:
-        raise http_error(500, "INTERNAL_ERROR", str(e))
+        msg = str(e)
+
+        # Vertex AI が 429 RESOURCE_EXHAUSTED を返した場合は 429 で返す
+        if "429" in msg and "RESOURCE_EXHAUSTED" in msg:
+            raise HTTPException(
+                status_code=429,
+                detail={"error": "RESOURCE_EXHAUSTED", "message": msg},
+            )
+
+        raise http_error(500, "INTERNAL_ERROR", msg)
 
 
 def pick_finding(report: Dict[str, Any], finding_id: str) -> Optional[Dict[str, Any]]:
@@ -762,14 +777,6 @@ def pick_finding(report: Dict[str, Any], finding_id: str) -> Optional[Dict[str, 
         if f.get("id") == finding_id:
             return f
     return None
-
-
-def clamp_range(start: int, end: int, n: int) -> tuple[int, int]:
-    s = max(0, min(start, n))
-    e = max(0, min(end, n))
-    if e < s:
-        s, e = e, s
-    return s, e
 
 
 # =========================
@@ -809,37 +816,35 @@ REPORT_SCHEMA: Dict[str, Any] = {
                     "title": {"type": "STRING"},
                     "reason": {"type": "STRING"},
                     "suggestion": {"type": "STRING"},
-                    "ranges": {
+                    "highlights": {
                         "type": "ARRAY",
                         "items": {
                             "type": "OBJECT",
                             "properties": {
-                                "start": {"type": "INTEGER", "minimum": 0},
-                                "end": {"type": "INTEGER", "minimum": 0},
+                                "text": {"type": "STRING"},
                                 "context": {"type": "STRING"},
                             },
-                            "required": ["start", "end", "context"],
+                            "required": ["text", "context"],
                         },
                     },
                     "tags": {"type": "ARRAY", "items": {"type": "STRING"}},
                 },
-                "required": ["id", "category", "severity", "title", "reason", "suggestion", "ranges"],
+                "required": ["id", "category", "severity", "title", "reason", "suggestion", "highlights"],
             },
         },
         "highlights": {
             "type": "OBJECT",
             "properties": {
-                "mode": {"type": "STRING", "enum": ["ranges"]},
+                "mode": {"type": "STRING", "enum": ["text"]},
                 "items": {
                     "type": "ARRAY",
                     "items": {
                         "type": "OBJECT",
                         "properties": {
                             "findingId": {"type": "STRING"},
-                            "start": {"type": "INTEGER", "minimum": 0},
-                            "end": {"type": "INTEGER", "minimum": 0},
+                            "text": {"type": "STRING"},
                         },
-                        "required": ["findingId", "start", "end"],
+                        "required": ["findingId", "text"],
                     },
                 },
             },
@@ -852,12 +857,11 @@ REPORT_SCHEMA: Dict[str, Any] = {
 PATCH_GEN_SCHEMA: Dict[str, Any] = {
     "type": "OBJECT",
     "properties": {
+        "originalText": {"type": "STRING"},
         "replacement": {"type": "STRING"},
         "note": {"type": "STRING"},
-        "start": {"type": "INTEGER", "minimum": 0},
-        "end": {"type": "INTEGER", "minimum": 0},
     },
-    "required": ["replacement", "start", "end"],
+    "required": ["originalText", "replacement"],
 }
 
 RELEASE_SCHEMA: Dict[str, Any] = {
@@ -903,20 +907,19 @@ PERSONA_SCHEMA: Dict[str, Any] = {
                     "title": {"type": "STRING"},
                     "reason": {"type": "STRING"},
                     "suggestion": {"type": "STRING"},
-                    "ranges": {
+                    "highlights": {
                         "type": "ARRAY",
                         "items": {
                             "type": "OBJECT",
                             "properties": {
-                                "start": {"type": "INTEGER", "minimum": 0},
-                                "end": {"type": "INTEGER", "minimum": 0},
+                                "text": {"type": "STRING"},
                                 "context": {"type": "STRING"},
                             },
-                            "required": ["start", "end", "context"],
+                            "required": ["text", "context"],
                         },
                     },
                 },
-                "required": ["id", "severity", "title", "reason", "suggestion", "ranges"],
+                "required": ["id", "severity", "title", "reason", "suggestion", "highlights"],
             },
         },
     },
@@ -943,7 +946,7 @@ MOCK_REPORT = {
             "title": "個人情報の具体性が高い",
             "reason": "氏名と所属を併記しているため、個人特定の可能性が高い。",
             "suggestion": "氏名を伏せ、所属は業界カテゴリに置換する。",
-            "ranges": [{"start": 10, "end": 30, "context": "..."}],
+            "highlights": [{"text": "山田太郎（株式会社ABC）", "context": "氏名と所属"}],
             "tags": ["pii", "identification"],
         },
         {
@@ -953,15 +956,15 @@ MOCK_REPORT = {
             "title": "内部URLの公開",
             "reason": "社内ホスト名が含まれている。",
             "suggestion": "ドメインを example.com に置換する。",
-            "ranges": [{"start": 60, "end": 90, "context": "..."}],
+            "highlights": [{"text": "internal.corp.example.net", "context": "社内ホスト名"}],
             "tags": ["internal"],
         },
     ],
     "highlights": {
-        "mode": "ranges",
+        "mode": "text",
         "items": [
-            {"findingId": "f_001", "start": 10, "end": 30},
-            {"findingId": "f_002", "start": 60, "end": 90},
+            {"findingId": "f_001", "text": "山田太郎（株式会社ABC）"},
+            {"findingId": "f_002", "text": "internal.corp.example.net"},
         ],
     },
 }
@@ -977,7 +980,7 @@ MOCK_PERSONA = {
             "title": "鍵情報の記載に注意",
             "reason": "値の貼り付け誘発につながる。",
             "suggestion": "値は貼らない注意書きを追加する。",
-            "ranges": [{"start": 20, "end": 50, "context": "..."}],
+            "highlights": [{"text": "API_KEY=xxxxx", "context": "APIキー記載"}],
         }
     ],
 }
@@ -998,15 +1001,15 @@ CHECK_SYSTEM = """
 入力Markdownを精査し、個人情報・セキュリティ・法務/コンプライアンスの観点で指摘を作成してください。
 返答は response_schema に厳密に従い、JSONのみを返してください。
 severity は low/medium/high/critical を使ってください。
-ranges は文字オフセット（start,end）です。context は短い抜粋です。
-highlights.items は findings の ranges と対応させてください（findingId,start,end）。
+findings.highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
+highlights.items は findings の highlights と対応させてください（findingId, text）。
 """
 
 PATCH_SYSTEM = """
 あなたは文章修正パッチ生成器です。
-入力として Markdown 全文、指摘（finding）、および推奨レンジが与えられます。
-返答は JSON のみです。replacement はレンジ置換の新しい文字列です。
-start/end は返答にも含め、レンジは可能な限り元の値を維持してください。
+入力として Markdown 全文、指摘（finding）、および問題のあるテキストが与えられます。
+返答は JSON のみです。originalText は置換対象の原文、replacement は置換後の新しい文字列です。
+originalText は入力テキスト内に存在する文字列と完全一致させてください。
 """
 
 RELEASE_SYSTEM = """
@@ -1018,7 +1021,8 @@ RELEASE_SYSTEM = """
 PERSONA_SYSTEM = """
 あなたはペルソナ別レビューアです。
 persona に応じた観点で Markdown を評価し、指摘を items に列挙してください。
-返答は JSON のみです。severity と ranges は仕様通りです。
+返答は JSON のみです。severity は仕様通りです。
+highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
 """
 
 
@@ -1035,6 +1039,16 @@ def format_settings(s: CheckSettings) -> str:
 # FastAPI
 # =========================
 app = FastAPI(title="Blog Risk Checker API", version="0.2.0")
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/v1/checks")
@@ -1083,11 +1097,10 @@ async def create_patch(req: PatchRequest):
             "findingId": req.findingId,
             "before": "Before ...",
             "after": "After ...",
-            "range": {"start": 0, "end": 10},
-            "apply": {"mode": "replaceRange", "start": 0, "end": 10, "replacement": "After ..."},
+            "apply": {"mode": "replaceText", "originalText": "Before ...", "replacement": "After ..."},
         }
 
-    # 優先: 保存済み report から finding/range を取る
+    # 優先: 保存済み report から finding を取る
     saved = CHECK_STORE.get(req.checkId)
     finding = None
     report = None
@@ -1099,33 +1112,28 @@ async def create_patch(req: PatchRequest):
     if not finding:
         raise http_error(404, "NOT_FOUND", "findingId not found for this checkId")
 
-    # 1st range を採用（UIも基本1つ目を使う想定）
-    r0 = finding["ranges"][0]
-    start, end = clamp_range(int(r0["start"]), int(r0["end"]), len(req.text))
-    before = req.text[start:end]
+    # 1st highlight を採用（UIも基本1つ目を使う想定）
+    h0 = finding["highlights"][0]
+    original_text = h0["text"]
 
     patch_prompt = (
         f"[checkId]\n{req.checkId}\n\n"
         f"[finding]\n{json.dumps(finding, ensure_ascii=False)}\n\n"
-        f"[range]\nstart={start}, end={end}\n\n"
-        f"[before]\n{before}\n\n"
+        f"[originalText]\n{original_text}\n\n"
         f"[full_markdown]\n{req.text}\n"
     )
 
     gen = await gemini_json(PATCH_SYSTEM, patch_prompt, PATCH_GEN_SCHEMA)
 
-    # モデルが範囲を書き換えた場合も clamp する
-    ms, me = clamp_range(int(gen["start"]), int(gen["end"]), len(req.text))
+    original = str(gen["originalText"])
     replacement = str(gen["replacement"])
-    before2 = req.text[ms:me]
 
     return {
         "patchId": new_patch_id(),
         "findingId": req.findingId,
-        "before": before2,
+        "before": original,
         "after": replacement,
-        "range": {"start": ms, "end": me},
-        "apply": {"mode": "replaceRange", "start": ms, "end": me, "replacement": replacement},
+        "apply": {"mode": "replaceText", "originalText": original, "replacement": replacement},
     }
 
 
@@ -1272,8 +1280,8 @@ Response（例）
         "title": "個人情報の具体性が高い",
         "reason": "氏名と所属を併記しているため、個人特定の可能性が高い。",
         "suggestion": "氏名を伏せ、所属は業界カテゴリに置換する。",
-        "ranges": [
-          { "start": 120, "end": 145, "context": "..." }
+        "highlights": [
+          { "text": "田中 太郎（TOPPAN）", "context": "氏名と所属の併記" }
         ],
         "tags": ["pii", "identification"]
       },
@@ -1284,14 +1292,14 @@ Response（例）
         "title": "内部URLの公開",
         "reason": "社内ホスト名が含まれている。",
         "suggestion": "ドメインを example.com に置換する。",
-        "ranges": [{ "start": 310, "end": 342, "context": "..." }]
+        "highlights": [{ "text": "http://intra-admin.toppan.local:8080/", "context": "社内URL" }]
       }
     ],
     "highlights": {
-      "mode": "ranges",
+      "mode": "text",
       "items": [
-        { "findingId": "f_001", "start": 120, "end": 145 },
-        { "findingId": "f_002", "start": 310, "end": 342 }
+        { "findingId": "f_001", "text": "田中 太郎（TOPPAN）" },
+        { "findingId": "f_002", "text": "http://intra-admin.toppan.local:8080/" }
       ]
     }
   }
@@ -1329,7 +1337,7 @@ Response（例）
       "byCategory": {}
     },
     "findings": [],
-    "highlights": { "mode": "ranges", "items": [] }
+    "highlights": { "mode": "text", "items": [] }
   }
 }
 
@@ -1353,14 +1361,12 @@ Response（例）
 {
   "patchId": "ptc_01JAX2R4M8Z0",
   "findingId": "f_001",
-  "before": "氏名：田中 太郎（TOPPAN）",
-  "after": "氏名：（非公開）（製造業）",
-  "range": { "start": 120, "end": 145 },
+  "before": "田中 太郎（TOPPAN）",
+  "after": "T.T.（製造業）",
   "apply": {
-    "mode": "replaceRange",
-    "start": 120,
-    "end": 145,
-    "replacement": "氏名：（非公開）（製造業）"
+    "mode": "replaceText",
+    "originalText": "田中 太郎（TOPPAN）",
+    "replacement": "T.T.（製造業）"
   }
 }
 
@@ -1439,7 +1445,7 @@ Response（例）
       "title": "鍵情報の記載に注意",
       "reason": "環境変数名と取得手順が具体的で、誤って値を貼る誘発になる。",
       "suggestion": "値は絶対に貼らない注意書きを追加する。",
-      "ranges": [{ "start": 520, "end": 610, "context": "..." }]
+      "highlights": [{ "text": "OPENAI_API_KEY=sk-xxx", "context": "APIキー記載" }]
     },
     {
       "id": "p_002",
@@ -1447,7 +1453,7 @@ Response（例）
       "title": "権限設定の説明不足",
       "reason": "最小権限の原則への言及がない。",
       "suggestion": "必要権限の範囲を明記する。",
-      "ranges": [{ "start": 700, "end": 760, "context": "..." }]
+      "highlights": [{ "text": "IAMロールを付与", "context": "権限設定" }]
     }
   ]
 }

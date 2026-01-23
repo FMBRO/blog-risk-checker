@@ -68,6 +68,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedFindingId: null,
   collapsedFindingIds: new Set(),
   settingsExpanded: false,
+  activePersona: 'general',
 
   // Persona
   personaResult: null,
@@ -103,6 +104,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSettingsExpanded: () =>
     set((state) => ({ settingsExpanded: !state.settingsExpanded })),
+
+  setActivePersona: (persona: string) =>
+    set(() => ({
+      activePersona: persona,
+      personaResult: null,
+      personaStatus: 'idle',
+    })),
 
   // State setters for async operations
   setCheckStatus: (status: CheckStatus) => set({ checkStatus: status }),
@@ -168,15 +176,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     try {
       const result = await createPatch(checkId, findingId, editorText);
-      const { start, end, text } = result.apply.replaceRange;
+      const { originalText, replacement } = result.apply;
 
-      // テキストを更新
-      const newText =
-        editorText.slice(0, start) + text + editorText.slice(end);
-      set({ editorText: newText });
+      // テキストを更新 (最初の1件のみ置換)
+      // Note: 同じテキストが複数ある場合は最初だけ置換される制限がある
+      if (editorText.includes(originalText)) {
+        const newText = editorText.replace(originalText, replacement);
+        set({ editorText: newText });
 
-      // 自動で再チェック
-      await get().runRecheck();
+        // 自動で再チェック
+        await get().runRecheck();
+      } else {
+        set({ errorMessage: 'Original text not found in document' });
+      }
     } catch (error) {
       const message = error instanceof ApiError
         ? error.detail.message
