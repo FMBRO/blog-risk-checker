@@ -165,8 +165,59 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  applyPatch: async (findingId: string) => {
-    const { checkId, editorText } = get();
+  applyPatch: async (findingId: string, deleteMode: boolean = false) => {
+    const { checkId, editorText, report } = get();
+
+    // Finding を report から削除するヘルパー関数
+    const removeFindingFromReport = () => {
+      // 1. report が存在しない場合は何もしない
+      if (!report) return;
+
+      // 2. findings 配列から該当の finding を除外
+      const newFindings = report.findings.filter(f => f.id !== findingId);
+
+      // 3. highlights.items から該当 findingId のハイライト情報を除外
+      const newHighlightItems = report.highlights.items.filter(
+        item => item.findingId !== findingId
+      );
+
+      // 4. ストアの report を新しいオブジェクトで更新
+      set({
+        report: {
+          ...report,                    // 既存の report をスプレッド
+          findings: newFindings,        // findings を新しい配列に置換
+          highlights: {
+            ...report.highlights,
+            items: newHighlightItems    // highlights.items を新しい配列に置換
+          },
+          summary: {
+            ...report.summary,
+            totalFindings: newFindings.length,  // 件数を更新
+          },
+        },
+        selectedFindingId: null,        // 選択状態をクリア
+      });
+    };
+
+    // 削除モード: APIを呼ばずにローカルで削除
+    if (deleteMode) {
+      if (!report) {
+        set({ errorMessage: 'No report available' });
+        return;
+      }
+      const highlightItem = report.highlights.items.find(
+        item => item.findingId === findingId
+      );
+      if (highlightItem && editorText.includes(highlightItem.text)) {
+        const newText = editorText.replace(highlightItem.text, '');
+        set({ editorText: newText });
+      }
+      // Finding カードを削除
+      removeFindingFromReport();
+      return;
+    }
+
+    // 通常モード: APIを呼んでパッチ適用
     if (!checkId) {
       set({ errorMessage: 'No active check session' });
       return;
@@ -185,7 +236,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ editorText: newText });
 
         // 自動で再チェック
-        await get().runRecheck();
+        //await get().runRecheck();
+        removeFindingFromReport();
       } else {
         set({ errorMessage: 'Original text not found in document' });
       }

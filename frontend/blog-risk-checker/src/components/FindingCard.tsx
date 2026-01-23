@@ -52,7 +52,7 @@ export function FindingCard({ finding }: FindingCardProps) {
 
   const handleApplyPatch = (e: React.MouseEvent) => {
     e.stopPropagation();
-    applyPatch(finding.id);
+    applyPatch(finding.id, false); // deleteMode: true でコンテンツ削除 & カード削除
   };
 
   return (

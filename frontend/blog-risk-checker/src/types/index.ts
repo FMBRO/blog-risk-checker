@@ -153,7 +153,7 @@ export interface AppState {
   // Async Actions
   runCheck: () => Promise<void>;
   runRecheck: () => Promise<void>;
-  applyPatch: (findingId: string) => Promise<void>;
+  applyPatch: (findingId: string, deleteMode?: boolean) => Promise<void>;
   runPersonaReview: (persona: string) => Promise<void>;
   runRelease: () => Promise<ReleaseResult | null>;
 
