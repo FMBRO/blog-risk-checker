@@ -84,12 +84,12 @@ def apply_replace_text(text: str, original_text: str, replacement: str) -> str:
 # -------------------------
 # Flow
 # -------------------------
+
 @dataclass
 class FlowConfig:
     base_url: str
     mock: str  # on/off/auto
     settings: Dict[str, Any]
-    persona: str  # frontend/security/legal/general
 
 
 def load_markdown(md_path: Optional[str]) -> str:
@@ -115,16 +115,15 @@ def run_flow(text: str, cfg: FlowConfig) -> None:
     report = create_res["report"]
     findings = report.get("findings", []) or []
 
-    # 2) persona review
+    # 2) persona review (audience based)
     print("\n=== 2) POST /v1/persona-review")
     persona_req = {
-        "persona": cfg.persona,
         "text": text,
         "settings": cfg.settings,
         "config": {"mock": cfg.mock},
     }
     persona_res = post_json(cfg.base_url, "/v1/persona-review", persona_req)
-    print(pretty({"persona": persona_res.get("persona"), "verdict": persona_res.get("verdict"), "total": persona_res.get("summary", {}).get("total")}))
+    print(pretty({"audience": persona_res.get("audience"), "verdict": persona_res.get("verdict"), "total": persona_res.get("summary", {}).get("total")}))
 
     # 3) patches (apply sequentially)
     print("\n=== 3) POST /v1/patches (for each finding) + apply locally")
@@ -197,7 +196,6 @@ def main() -> None:
     ap.add_argument("--tone", default=DEFAULT_SETTINGS["tone"], choices=["neutral", "casual", "formal", "technical"])
     ap.add_argument("--audience", default=DEFAULT_SETTINGS["audience"], choices=["engineers", "general", "internal", "executives"])
     ap.add_argument("--redact-mode", default=DEFAULT_SETTINGS["redactMode"], choices=["none", "light", "strict"])
-    ap.add_argument("--persona", default="security", choices=["frontend", "security", "legal", "general"])
     args = ap.parse_args()
 
     text = load_markdown(args.md)
@@ -210,7 +208,6 @@ def main() -> None:
             "audience": args.audience,
             "redactMode": args.redact_mode,
         },
-        persona=args.persona,
     )
 
     run_flow(text, cfg)

@@ -68,7 +68,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedFindingId: null,
   collapsedFindingIds: new Set(),
   settingsExpanded: false,
-  activePersona: 'general',
 
   // Persona
   personaResult: null,
@@ -81,9 +80,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   setEditorText: (text: string) => set({ editorText: text, isAutosaved: false }),
 
   setSettings: (newSettings: Partial<CheckSettings>) =>
-    set((state) => ({
-      settings: { ...state.settings, ...newSettings },
-    })),
+    set((state) => {
+      const audienceChanged = newSettings.audience !== undefined &&
+                              newSettings.audience !== state.settings.audience;
+      return {
+        settings: { ...state.settings, ...newSettings },
+        // audience変更時はpersonaStatusをidleにリセットして再実行を促す
+        ...(audienceChanged && { personaStatus: 'idle' as const }),
+      };
+    }),
 
   setActiveTab: (tab: TabType) => set({ activeTab: tab }),
 
@@ -104,13 +109,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSettingsExpanded: () =>
     set((state) => ({ settingsExpanded: !state.settingsExpanded })),
-
-  setActivePersona: (persona: string) =>
-    set(() => ({
-      activePersona: persona,
-      personaResult: null,
-      personaStatus: 'idle',
-    })),
 
   // State setters for async operations
   setCheckStatus: (status: CheckStatus) => set({ checkStatus: status }),
@@ -249,12 +247,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  runPersonaReview: async (persona: string) => {
+  runPersonaReview: async () => {
     const { editorText, settings } = get();
     set({ personaStatus: 'running', errorMessage: null });
 
     try {
-      const result = await personaReview(persona, editorText, settings);
+      const result = await personaReview(editorText, settings);
       set({
         personaResult: result,
         personaStatus: 'success',

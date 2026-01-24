@@ -127,13 +127,12 @@ export async function release(
 
 // ペルソナレビュー
 export async function personaReview(
-  persona: string,
   text: string,
   settings: CheckSettings,
   config?: ApiConfig
 ): Promise<PersonaReview> {
   return apiFetch('/v1/persona-review', {
     method: 'POST',
-    body: JSON.stringify({ persona, text, settings }),
+    body: JSON.stringify({ text, settings }),
   }, config);
 }

@@ -1,7 +1,7 @@
 // 設定関連の型
 export type PublishScope = 'public' | 'unlisted' | 'private' | 'internal';
 export type Tone = 'technical' | 'casual' | 'formal';
-export type Audience = 'engineers' | 'general' | 'executives';
+export type Audience = 'engineers' | 'general' | 'internal' | 'executives';
 export type RedactMode = 'none' | 'light' | 'strict';
 
 // 判定・重要度の型
@@ -80,15 +80,27 @@ export interface ReleaseResult {
 // Personaレビュー
 export interface PersonaReviewItem {
   id: string;
-  category: string;
   severity: Severity;
   title: string;
   reason: string;
   suggestion: string;
+  highlights: { text: string; context: string }[];
+}
+
+export interface PersonaReviewSummary {
+  total: number;
+  bySeverity: {
+    low: number;
+    medium: number;
+    high: number;
+    critical: number;
+  };
 }
 
 export interface PersonaReview {
-  persona: string;
+  audience: Audience;
+  verdict: Verdict;
+  summary: PersonaReviewSummary;
   items: PersonaReviewItem[];
 }
 
@@ -154,7 +166,7 @@ export interface AppState {
   runCheck: () => Promise<void>;
   runRecheck: () => Promise<void>;
   applyPatch: (findingId: string, deleteMode?: boolean) => Promise<void>;
-  runPersonaReview: (persona: string) => Promise<void>;
+  runPersonaReview: () => Promise<void>;
   runRelease: () => Promise<ReleaseResult | null>;
 
   // State setters for async operations

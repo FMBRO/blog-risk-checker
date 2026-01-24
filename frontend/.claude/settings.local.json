@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm create:*)"
+      "Bash(npm create:*)",
+      "Bash(npx tsc:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)"
     ]
   }
 }

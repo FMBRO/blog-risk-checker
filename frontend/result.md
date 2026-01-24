@@ -1,102 +1,76 @@
-(.venv) PS C:\Users\toppa\Documents\Dev\AI_Agents_Hackson\backend> python test.py --base-url http://localhost:8000 --md sample_blog.md --mock off
 === 0) Input markdown length: 3641
 
 === 1) POST /v1/checks
 {
-  "checkId": "chk_d5fcf0ea9c9e492b",
+  "checkId": "chk_3800c48ef0334aab",
   "verdict": "bad"
 }
 
 === 2) POST /v1/persona-review
 {
-  "persona": "security",
-  "verdict": "bad",
-  "total": 16
+  "audience": "engineers",
+  "verdict": "ok",
+  "total": 1
 }
 
 === 3) POST /v1/patches (for each finding) + apply locally
 {
-  "findingId": "pii-name-001",
-  "beforePreview": "田中 太郎",
-  "afterPreview": "T.T."
+  "findingId": "f001",
+  "beforePreview": "田中 太郎（TOPPAN / 新規事業開発）",
+  "afterPreview": "T.T.（TOPPAN / 新規事業開発）"
 }
 {
-  "findingId": "pii-email-001",
-  "beforePreview": "tanaka.taro@toppan.example.jp",
-  "afterPreview": "dummy.user@example.com"
-}
-{
-  "findingId": "pii-slack-001",
-  "beforePreview": "@taro_tanaka",
-  "afterPreview": "@user_id"
-}
-{
-  "findingId": "sec-projid-001",
+  "findingId": "f002",
   "beforePreview": "toppan-internal-dev-123",
-  "afterPreview": "your-gcp-project-id"
+  "afterPreview": "YOUR_PROJECT_ID"
 }
 {
-  "findingId": "sec-url-001",
+  "findingId": "f003",
   "beforePreview": "http://intra-admin.toppan.local:8080/",
-  "afterPreview": "http://internal.example.com/admin"
+  "afterPreview": "[REDACTED_INTERNAL_URL]"
 }
 {
-  "findingId": "sec-url-002",
-  "beforePreview": "https://jira.toppan.local/browse/PROJ-123",
-  "afterPreview": "https://jira.example.com/browse/PROJ-XXX"
-}
-{
-  "findingId": "sec-ip-001",
-  "beforePreview": "http://10.20.30.40:9000/swagger",
-  "afterPreview": "http://api.example.com/docs/swagger"
-}
-{
-  "findingId": "sec-api-url-001",
-  "beforePreview": "http://intra-api.toppan.local/v1/checks",
-  "afterPreview": "http://api.example.com/v1/checks"
-}
-{
-  "findingId": "sec-apikey-001",
+  "findingId": "f004",
   "beforePreview": "sk-THIS_IS_NOT_REAL_BUT_LOOKS_LIKE_A_KEY",
-  "afterPreview": "DUMMY_API_KEY"
+  "afterPreview": "YOUR_OPENAI_API_KEY"
 }
 {
-  "findingId": "sec-token-001",
-  "beforePreview": "hf_abcdefghijklmnopqrstuvwxyz0123456789",
-  "afterPreview": "YOUR_HF_TOKEN"
+  "findingId": "f005",
+  "beforePreview": "x-request-id: req_9d7c...",
+  "afterPreview": "x-request-id: [REDACTED_REQUEST_ID]"
 }
 {
-  "findingId": "sec-awskey-001",
-  "beforePreview": "AKIAIOSFODNN7EXAMPLE",
-  "afterPreview": "YOUR_AWS_ACCESS_KEY_ID"
+  "findingId": "f006",
+  "beforePreview": "allow_origins=[\"*\"]",
+  "afterPreview": "allow_origins=[\"*\"] # 危険: 本番環境では絶対に使用しないでください"
 }
 {
-  "findingId": "sec-awskey-002",
-  "beforePreview": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-  "afterPreview": "DUMMY_AWS_SECRET_ACCESS_KEY"
-}
-{
-  "findingId": "sec-password-001",
-  "beforePreview": "SuperSecretPassword123",
-  "afterPreview": "DUMMY_ADMIN_PASSWORD"
-}
-{
-  "findingId": "sec-cors-001",
-  "beforePreview": "CORSを広く許可しています（本番では不可）",
-  "afterPreview": "CORSを広く許可しています（本番環境では重大なセキュリティリスクとなります）"
-}
-{
-  "findingId": "sec-auth-001",
+  "findingId": "f007",
   "beforePreview": "認証が無いので、誰でも /v1/checks を叩けます。",
-  "afterPreview": "認証が無いので、誰でも /v1/checks を叩けます。（**本番環境では認証を必ず導入してください**）"
+  "afterPreview": "本APIは検証目的のため認証機構がありません。本番環境ではセキュリ ティ上の重大な問題となるため、この設定は絶対に使用せず、適切な認証・認可機構を導入 してください"
+}
+{
+  "findingId": "f008",
+  "beforePreview": "第三者の機密情報は含めません（含めてはいけません）。",
+  "afterPreview": "第三者の機密情報は含まれていません。"
+}
+{
+  "findingId": "f009",
+  "beforePreview": "ライセンス未確認のコードをコピーして公開しません。",
+  "afterPreview": "記事内で使用するコードのライセンスは必ず確認し、適切に表示します。"
+}
+{
+  "findingId": "f010",
+  "beforePreview": "企業名・製品名の扱いは、各社の商標ガイドラインに従います。",   
+  "afterPreview": "記事内で言及する企業名・製品名は、各社の商標ガイドラインを遵守していることを確認済みです。"
 }
 
 === 4) POST /v1/checks/{checkId}/recheck
 {
-  "checkId": "chk_d5fcf0ea9c9e492b",
+  "checkId": "chk_3800c48ef0334aab",
   "verdict": "bad",
-  "score": 5,
-  "totalFindings": 20
+  "score": 10,
+  "totalFindings": 15
 }
 
 === 5) POST /v1/release (only if verdict==ok)

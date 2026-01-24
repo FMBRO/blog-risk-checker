@@ -4,135 +4,93 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Blog Risk Checker - A React web application for analyzing Markdown blog posts for security, privacy, and compliance risks before publishing. Two-pane layout: Markdown editor (left) + risk analysis dashboard (right).
+React frontend for a Blog Risk Checker that analyzes markdown content for security, privacy, legal, and compliance risks. Communicates with a FastAPI backend that uses Google Gemini 2.5 Flash for AI-powered analysis.
 
-## Development Commands
+## Commands
 
 ```bash
 cd blog-risk-checker
 
-# Install dependencies
-npm install
+# Development
+npm run dev          # Start Vite dev server with HMR
 
-# Start development server (http://localhost:5173)
-npm run dev
+# Build
+npm run build        # TypeScript check + production build
 
-# Type check + production build
-npm run build
-
-# Run ESLint
-npm run lint
+# Lint
+npm run lint         # ESLint check
 
 # Preview production build
 npm run preview
 ```
 
-## Tech Stack
-
-- **React 19** + **TypeScript** (strict mode)
-- **Vite** for build/dev
-- **TailwindCSS** for styling
-- **CodeMirror 6** for Markdown editing with highlight decorations
-- **Zustand** for state management
-- **lucide-react** for icons
-
 ## Architecture
 
-### State Management
+### Technology Stack
+- React 19 + TypeScript + Vite 7
+- Zustand for state management
+- Tailwind CSS for styling
+- CodeMirror 6 for markdown editing
 
-Single Zustand store (`src/store/appStore.ts`) manages all application state:
-- Document metadata (projectName, docTitle)
-- Check settings (publishScope, tone, audience, redactMode)
-- Editor text
-- Check results (checkId, report, status)
-- UI state (activeTab, severityFilter, selectedFindingId, collapsedFindingIds)
-- Persona review results
-
-### API Layer
-
-`src/api/client.ts` provides typed API functions with `ApiError` class for error handling:
-- `createCheck()` - POST `/v1/checks`
-- `recheck()` - POST `/v1/checks/{checkId}/recheck`
-- `createPatch()` - POST `/v1/patches`
-- `release()` - POST `/v1/release`
-- `personaReview()` - POST `/v1/persona-review`
-
-API base URL configured via `VITE_API_BASE_URL` env var (default: `http://localhost:8000`).
-
-### Component Structure
-
+### Project Structure
 ```
-AppShell                    # Main 2-column layout (65%/35%)
-├── TopBar                  # Header with Check/Export buttons
-├── EditorPane              # Left pane
-│   ├── SettingsBar         # Collapsible settings (scope/tone/audience/redact)
-│   └── MarkdownEditor      # CodeMirror 6 with highlight decorations
-└── ResultsPane             # Right pane (tabs)
-    ├── FindingsView        # Findings tab
-    │   ├── VerdictBanner   # Overall verdict display
-    │   ├── SeverityFilterChips  # All/High/Low filter
-    │   └── FindingCardList # List of FindingCard components
-    └── PersonaView         # Persona review tab
+blog-risk-checker/src/
+├── api/client.ts       # API layer - all backend communication
+├── store/appStore.ts   # Zustand store - centralized state management
+├── types/index.ts      # TypeScript type definitions
+└── components/         # React components
 ```
 
-### Key Data Types
+### State Management (Zustand)
+Single store (`appStore.ts`) manages all application state:
+- **Document**: projectName, docTitle, editorText
+- **Settings**: publishScope, tone, audience, redactMode
+- **Check results**: checkId, report, checkStatus
+- **UI state**: activeTab, severityFilter, selectedFindingId
 
-Located in `src/types/index.ts`:
-- `Verdict`: `'ok' | 'warn' | 'bad'`
-- `Severity`: `'low' | 'medium' | 'high' | 'critical'`
-- `Finding`: Contains id, category, severity, title, reason, suggestion, ranges
-- `Report`: Contains verdict, score, summary, findings[], highlights
-- UI maps server severities to 3 filters: High (high/critical), Low (low/medium), All
+Async actions in store: `runCheck()`, `runRecheck()`, `applyPatch()`, `runPersonaReview()`, `runRelease()`
 
-### Editor Highlights
-
-MarkdownEditor uses CodeMirror 6 `ViewPlugin` with `Decoration.mark()`:
-- Highlights come from `report.highlights.items` (character offsets, not line:col)
-- Default: yellow background (`#fef08a`)
-- Selected: darker yellow (`#fde047`) + outline
-- Clicking highlights triggers `selectFinding()`
-
-### Category Colors
-
-Finding cards use left border colors by category:
-- security: red-500
-- privacy: blue-500
-- legal: purple-500
-- compliance: orange-500
-- tone: yellow-500
-- quality: green-500
-
-## Core Flows
-
-### Check Flow
-1. User clicks Check button
-2. If no `checkId`: call `createCheck()`, else call `recheck()`
-3. Store receives `checkId` and `report`
-4. Highlights rendered in editor, findings displayed in right pane
-
-### Patch Flow
-1. User clicks "Apply Fix" on FindingCard
-2. `createPatch()` called with findingId
-3. API returns `apply.replaceRange` with start/end/text
-4. Text replaced in editor state
-5. Auto-trigger `runRecheck()`
-
-### Selection Sync
-- Click FindingCard or editor highlight
-- `selectFinding(id)` updates store
-- Editor re-renders with selected highlight emphasized
-- Card shows selected state (blue background)
-
-## Backend Requirements
-
-Backend runs separately (FastAPI on port 8000). See `spec.md` for full API contract. Key endpoints return:
-- `/v1/checks`: `{ checkId, report }`
-- `/v1/patches`: `{ apply: { replaceRange: { start, end, text } } }`
-- `/v1/release`: `{ safeMarkdown, fixSummary, checklist }` (only when verdict='ok')
-
-## Environment Setup
-
-Create `.env.local` in `blog-risk-checker/`:
+### Component Hierarchy
 ```
-VITE_API_BASE_URL=http://localhost:8000
+App → AppShell (2-column layout)
+├── TopBar (Check/Export buttons)
+├── EditorPane (left)
+│   ├── SettingsBar (expandable settings)
+│   └── MarkdownEditor (CodeMirror)
+└── ResultsPane (right)
+    ├── Tabs (Findings | Persona)
+    ├── FindingsView → VerdictBanner, SeverityFilterChips, FindingCardList
+    └── PersonaView
 ```
+
+### API Integration
+All API calls go through `api/client.ts` which wraps fetch with error handling. Backend base URL configured via `VITE_API_BASE_URL` environment variable (defaults to `http://localhost:8000`).
+
+Endpoints used:
+- `POST /v1/checks` - Initial risk assessment
+- `POST /v1/checks/{checkId}/recheck` - Re-analyze after edits
+- `POST /v1/patches` - Generate fix for a finding
+- `POST /v1/release` - Finalize for publication
+- `POST /v1/persona-review` - Audience-specific analysis
+
+### Data Flow
+1. User edits markdown in CodeMirror editor
+2. "Check" button calls `runCheck()` → `POST /v1/checks`
+3. Backend returns report with findings and highlights
+4. Findings displayed in ResultsPane; highlights shown in editor
+5. User can apply patches or run persona review
+6. Export triggers `runRelease()` (only if verdict='ok')
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8000` |
+
+## Key Type Definitions
+
+See `types/index.ts` for complete definitions. Core types:
+- `CheckSettings`: publishScope, tone, audience, redactMode
+- `Finding`: Individual issue with id, category, severity, title, reason, suggestion, highlights
+- `Report`: verdict, score, summary, findings[], highlights
+- `PersonaReview`: Audience-specific analysis results

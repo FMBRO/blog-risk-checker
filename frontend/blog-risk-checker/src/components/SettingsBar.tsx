@@ -73,6 +73,7 @@ export function SettingsBar() {
             >
               <option value="engineers">Engineers</option>
               <option value="general">General</option>
+              <option value="internal">Internal</option>
               <option value="executives">Executives</option>
             </select>
           </div>

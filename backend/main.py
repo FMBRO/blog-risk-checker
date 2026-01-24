@@ -87,8 +87,8 @@ class ReleaseRequest(BaseModel):
     config: Optional[CheckConfig] = CheckConfig()
 
 
+
 class PersonaReviewRequest(BaseModel):
-    persona: Persona
     text: str = Field(min_length=1)
     settings: CheckSettings
     config: Optional[CheckConfig] = CheckConfig()
@@ -265,10 +265,11 @@ RELEASE_SCHEMA: Dict[str, Any] = {
     "required": ["safeMarkdown", "fixSummary", "checklist", "publishedScope"],
 }
 
+
 PERSONA_SCHEMA: Dict[str, Any] = {
     "type": "OBJECT",
     "properties": {
-        "persona": {"type": "STRING", "enum": ["frontend", "security", "legal", "general"]},
+        "audience": {"type": "STRING", "enum": ["engineers", "general", "internal", "executives"]},
         "verdict": {"type": "STRING", "enum": ["ok", "warn", "bad"]},
         "summary": {
             "type": "OBJECT",
@@ -313,7 +314,7 @@ PERSONA_SCHEMA: Dict[str, Any] = {
             },
         },
     },
-    "required": ["persona", "verdict", "summary", "items"],
+    "required": ["audience", "verdict", "summary", "items"],
 }
 
 
@@ -360,7 +361,7 @@ MOCK_REPORT = {
 }
 
 MOCK_PERSONA = {
-    "persona": "security",
+    "audience": "engineers",
     "verdict": "warn",
     "summary": {"total": 1, "bySeverity": {"low": 0, "medium": 1, "high": 0, "critical": 0}},
     "items": [
@@ -409,8 +410,8 @@ RELEASE_SYSTEM = """
 """
 
 PERSONA_SYSTEM = """
-あなたはペルソナ別レビューアです。
-persona に応じた観点で Markdown を評価し、指摘を items に列挙してください。
+あなたは audience に合わせたレビューアです。
+audience に応じた観点（例: engineersなら技術的正確性、generalなら分かりやすさ、executivesならビジネス価値）で Markdown を評価し、指摘を items に列挙してください。
 返答は JSON のみです。severity は仕様通りです。
 highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
 """
@@ -564,16 +565,16 @@ async def persona_review(req: PersonaReviewRequest):
     mode = req.config.mock if req.config else "auto"
     if should_mock(mode):
         mock = dict(MOCK_PERSONA)
-        mock["persona"] = req.persona
+        # mockのaudienceを上書き
+        mock["audience"] = req.settings.audience
         return mock
 
     prompt = (
-        f"[persona]\n{req.persona}\n\n"
         f"[settings]\n{format_settings(req.settings)}\n"
         f"[markdown]\n{req.text}\n"
     )
     out = await gemini_json(PERSONA_SYSTEM, prompt, PERSONA_SCHEMA)
 
-    # persona は入力に揃える（念のため）
-    out["persona"] = req.persona
+    # audience は入力に揃える（念のため）
+    out["audience"] = req.settings.audience
     return out

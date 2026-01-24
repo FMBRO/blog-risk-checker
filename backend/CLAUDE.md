@@ -24,15 +24,15 @@ python test.py --base-url http://localhost:8000 --md sample_blog.md --mock auto 
 
 ## Architecture
 
-**Single-file application** (`main.py`) with ~600 lines organized as:
+**Single-file application** (`main.py`) with ~580 lines organized as:
 
 1. **Type Definitions** (Lines 39-47): Literals for PublishScope, Tone, Audience, RedactMode, MockMode, Verdict, Severity, Persona
-2. **Request Models** (Lines 53-94): Pydantic BaseModel classes for API validation
-3. **In-Memory Store** (Line 100): `CHECK_STORE` dictionary (MVP - no database)
-4. **Gemini Integration** (Lines 131-163): Async wrapper with structured output via JSON schemas
-5. **JSON Schemas** (Lines 183-329): REPORT_SCHEMA, PATCH_GEN_SCHEMA, RELEASE_SCHEMA, PERSONA_SCHEMA for Gemini structured output
-6. **Mock Payloads** (Lines 335-395): MOCK_REPORT, MOCK_PERSONA, MOCK_RELEASE for testing
-7. **System Prompts** (Lines 401-427): Instructions for Gemini across different analysis tasks
+2. **Request Models** (Lines 53-95): Pydantic BaseModel classes for API validation
+3. **In-Memory Store** (Line 101): `CHECK_STORE` dictionary (MVP - no database)
+4. **Gemini Integration** (Lines 131-163): Async wrapper `gemini_json()` with structured output via JSON schemas
+5. **JSON Schemas** (Lines 175-318): REPORT_SCHEMA, PATCH_GEN_SCHEMA, RELEASE_SCHEMA, PERSONA_SCHEMA for Gemini structured output
+6. **Mock Payloads** (Lines 321-384): MOCK_REPORT, MOCK_PERSONA, MOCK_RELEASE for testing
+7. **System Prompts** (Lines 389-426): Instructions for Gemini across different analysis tasks (CHECK_SYSTEM, PATCH_SYSTEM, RELEASE_SYSTEM, PERSONA_SYSTEM)
 
 ## API Endpoints
 
