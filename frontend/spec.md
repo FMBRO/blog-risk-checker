@@ -58,6 +58,7 @@
 ### 表示
 - 1行の横長バー（折りたたみ可能）
 - 文言例：`Settings: Public / Technical / Engineers... (Click to expand)`
+- **View切替**: `Editor` / `Preview` のトグルボタン
 - 右端にドロップダウン矢印
 - 省略表示（…）対応
 
@@ -72,21 +73,35 @@
 
 ---
 
-## 4. 左ペイン仕様（Markdown Editor）
+---
+
+## 4. 左ペイン仕様（Markdown Editor / Preview）
+
+### モード切替
+- **Editor**: CodeMirror による Markdown 編集画面（デフォルト）
+- **Preview**: `react-markdown` によるレンダリング結果の閲覧
+
+### 4.1 Editorモード
+
 
 ### 表示要素
 - 行番号（左ガター）
 - Markdownテキスト
 - 指摘ハイライト（黄色背景）
 
-### 編集仕様
+### 4.1.2 編集仕様
 - プレーンMarkdown入力（MVPは最低限）
 - ハイライトは「チェック結果の highlights.items」に基づきテキスト検索でオーバーレイ表示
 - カーソル位置とハイライト表示の整合が必要（CodeMirror / Monaco 等を想定）
 
-### ハイライト仕様
+### 4.1.3 ハイライト仕様
 - 種別ごとのスタイル差を許容（基本は黄色）
 - クリック時に「該当指摘カード選択」へ同期（任意だが自然）
+
+### 4.2 Previewモード
+- **機能**: Markdown記法（太字、リスト、リンク、テーブル等）をスタイル適用して表示する。
+- **技術**: `react-markdown` + `remark-gfm` + `@tailwindcss/typography`
+- **スタイル**: `prose` (Tailwind Typography) を使用し、読みやすい記事スタイルを提供する。
 
 ---
 

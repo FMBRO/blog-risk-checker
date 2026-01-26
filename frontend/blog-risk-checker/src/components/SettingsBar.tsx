@@ -3,7 +3,7 @@ import { useAppStore } from '../store/appStore';
 import type { PublishScope, Tone, Audience, RedactMode } from '../types';
 
 export function SettingsBar() {
-  const { settings, setSettings, settingsExpanded, toggleSettingsExpanded } = useAppStore();
+  const { settings, setSettings, settingsExpanded, toggleSettingsExpanded, viewMode, setViewMode } = useAppStore();
 
   const summaryText = `${capitalize(settings.publishScope)} / ${capitalize(settings.tone)} / ${capitalize(settings.audience)}`;
 
@@ -14,12 +14,33 @@ export function SettingsBar() {
         onClick={toggleSettingsExpanded}
         className="w-full px-4 py-2 flex items-center justify-between text-sm text-gray-600 hover:bg-gray-100 transition-colors"
       >
-        <div className="flex items-center gap-2">
+        {/* View Toggle */}
+        <div className="flex bg-gray-200 rounded-lg p-0.5 mr-4">
+          <button
+            onClick={(e) => { e.stopPropagation(); setViewMode('edit'); }}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'edit'
+              ? 'bg-white text-gray-800 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            Editor
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setViewMode('preview'); }}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'preview'
+              ? 'bg-white text-gray-800 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            Preview
+          </button>
+        </div>
+        <div className="flex items-center gap-2 flex-1">
           <Settings className="w-4 h-4" />
           <span>
             Settings: <span className="text-gray-800">{summaryText}</span>
           </span>
-          <span className="text-gray-400">(Click to expand)</span>
+          <span className="text-gray-400 text-xs ml-2">(Click to expand)</span>
         </div>
         {settingsExpanded ? (
           <ChevronUp className="w-4 h-4" />
@@ -56,7 +77,7 @@ export function SettingsBar() {
               onChange={(e) => setSettings({ tone: e.target.value as Tone })}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="technical">技術的</option>
+              <option value="technical">テクニカル</option>
               <option value="casual">カジュアル</option>
               <option value="formal">フォーマル</option>
             </select>

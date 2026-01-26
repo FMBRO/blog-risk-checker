@@ -81,6 +81,11 @@ Google Gemini 2.5 Flash を利用して、Markdown コンテンツのセキュ�
 - **機能**: 総合判定が `OK` の場合のみ実行可能です。
 - **出力**: 安全化された Markdown、修正サマリ、公開前チェックリストが出力されます。判定が `OK` でない場合はブロックされます。
 
+### 5. プレビュー (Preview)
+- **機能**: 編集中の Markdown テキストをレンダリング表示します。
+- **操作**: 設定バーのボタンで「Editor」（編集）と「Preview」（閲覧）を切り替え可能です。
+- **技術**: `react-markdown` + `@tailwindcss/typography` (GitHub Flavored Markdown 対応)
+
 ## 処理フロー (シーケンス図)
 ```mermaid
 sequenceDiagram

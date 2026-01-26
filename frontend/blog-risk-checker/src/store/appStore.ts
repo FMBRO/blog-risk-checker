@@ -89,7 +89,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSettings: (newSettings: Partial<CheckSettings>) =>
     set((state) => {
       const audienceChanged = newSettings.audience !== undefined &&
-                              newSettings.audience !== state.settings.audience;
+        newSettings.audience !== state.settings.audience;
       return {
         settings: { ...state.settings, ...newSettings },
         // audience変更時はpersonaStatusをidleにリセットして再実行を促す
@@ -116,6 +116,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSettingsExpanded: () =>
     set((state) => ({ settingsExpanded: !state.settingsExpanded })),
+
+  // View Mode
+  viewMode: 'edit',
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   // State setters for async operations
   setCheckStatus: (status: CheckStatus) => set({ checkStatus: status }),

@@ -169,6 +169,10 @@ export interface AppState {
   toggleFindingCollapse: (id: string) => void;
   toggleSettingsExpanded: () => void;
 
+  // View Mode
+  viewMode: 'edit' | 'preview';
+  setViewMode: (mode: 'edit' | 'preview') => void;
+
   // Async Actions
   runCheck: () => Promise<void>;
   runRecheck: () => Promise<void>;
