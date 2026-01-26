@@ -1,4 +1,4 @@
-# Blog Risk Checker Backend仕様
+# Blog Risk Checker バックエンド仕様
 
 Google Gemini 2.5 Flash (Vertex AI) を利用して、技術ブログ記事（Markdown）のセキュリティ、プライバシー、およびコンプライアンスリスクを分析・修正支援するバックエンドAPIです。
 
