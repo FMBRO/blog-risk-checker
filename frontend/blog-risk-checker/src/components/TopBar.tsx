@@ -49,6 +49,7 @@ export function TopBar() {
           <span className="font-semibold text-gray-900">Blog Risk Checker</span>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500">
+          {/*　
           <span>/</span>
           <span>{projectName}</span>
           <span>/</span>
@@ -58,6 +59,7 @@ export function TopBar() {
           ) : (
             <span className="text-yellow-600 text-xs">(unsaved)</span>
           )}
+          */}
         </div>
       </div>
 

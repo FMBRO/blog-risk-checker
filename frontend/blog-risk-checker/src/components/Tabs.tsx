@@ -4,7 +4,7 @@ import type { TabType } from '../types';
 
 const tabs: { id: TabType; label: string }[] = [
   { id: 'findings', label: 'Findings' },
-  { id: 'persona', label: 'Persona' },
+  { id: 'persona', label: 'Audience' },
 ];
 
 export function Tabs() {

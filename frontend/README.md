@@ -69,22 +69,34 @@ Google Gemini 2.5 Flash を利用して、Markdown コンテンツのセキュ�
 - **機能**: 検出された指摘に対して、AI が修正案（Suggestion）を提示します。
 - **適用**: 「Apply」ボタンを押すと、エディタ内の該当箇所が修正案に置換されます。その後、再チェック（Recheck）が推奨されます。
 
-### 3. ペルソナレビュー (Persona Review)
+### 3. Audienceレビュー (Audience Review)
 - **機能**: 設定した「想定読者 (Audience)」の視点で記事をレビューします。
+- **UIタブ名**: 「Audience」（内部では `persona` として処理）
 - **視点**:
-  - `Engineers`: 技術的な正確性
-  - `General`: 分かりやすさ
-  - `Executives`: ビジネス価値
-  - `Internal`: 社内ルール適合性
+  - `技術者 (Engineers)`: 技術的な正確性
+  - `一般 (General)`: 分かりやすさ
+  - `ビジネス (Executives)`: ビジネス価値
+  - `コンプライアンス (Internal)`: 社内ルール適合性
 
-### 4. リリース (Release)
+### 4. リリース / エクスポート (Release / Export)
 - **機能**: 総合判定が `OK` の場合のみ実行可能です。
-- **出力**: 安全化された Markdown、修正サマリ、公開前チェックリストが出力されます。判定が `OK` でない場合はブロックされます。
+- **出力**: 安全化された Markdown、修正サマリ、公開前チェックリストが出力されます。
+- **Exportメニュー**:
+  - Copy Markdown: 安全化されたMarkdownをクリップボードにコピー
+  - Download Markdown: `.md` ファイルとしてダウンロード
+  - Copy Checklist: 公開前チェックリストをコピー
+- **通知**: コピー成功時にトースト通知を表示（2秒で自動消去）
 
 ### 5. プレビュー (Preview)
 - **機能**: 編集中の Markdown テキストをレンダリング表示します。
 - **操作**: 設定バーのボタンで「Editor」（編集）と「Preview」（閲覧）を切り替え可能です。
 - **技術**: `react-markdown` + `@tailwindcss/typography` (GitHub Flavored Markdown 対応)
+
+### 6. UI仕様 (UI Specs)
+- **Toast通知**: クリップボードコピー成功時などに、画面下部に通知を表示します（2秒で自動消去）。
+- **日本語ラベル**: Public/Private などの設定値は、UI上では「公開」「非公開」などの日本語ラベルで表示されます。
+- **タブ名称**: 右ペインのタブは「Findings」と「Audience」と表示されます（内部IDは `persona` を維持）。
+
 
 ## 処理フロー (シーケンス図)
 ```mermaid

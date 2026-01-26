@@ -2,10 +2,30 @@ import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import type { PublishScope, Tone, Audience, RedactMode } from '../types';
 
+const PUBLISH_SCOPE_LABELS: Record<string, string> = {
+  public: '公開',
+  unlisted: '限定公開',
+  private: '非公開',
+  internal: '社内のみ',
+};
+
+const TONE_LABELS: Record<string, string> = {
+  technical: 'テクニカル',
+  casual: 'カジュアル',
+  formal: 'フォーマル',
+};
+
+const AUDIENCE_LABELS: Record<string, string> = {
+  engineers: '技術者',
+  general: '一般',
+  internal: 'コンプライアンス',
+  executives: 'ビジネス',
+};
+
 export function SettingsBar() {
   const { settings, setSettings, settingsExpanded, toggleSettingsExpanded, viewMode, setViewMode } = useAppStore();
 
-  const summaryText = `${capitalize(settings.publishScope)} / ${capitalize(settings.tone)} / ${capitalize(settings.audience)}`;
+  const summaryText = `${PUBLISH_SCOPE_LABELS[settings.publishScope]} / ${TONE_LABELS[settings.tone]} / ${AUDIENCE_LABELS[settings.audience]}`;
 
   return (
     <div className="border-b border-gray-200 bg-gray-50">
@@ -117,8 +137,4 @@ export function SettingsBar() {
       )}
     </div>
   );
-}
-
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }

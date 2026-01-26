@@ -2,6 +2,13 @@ import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { User, Loader2 } from 'lucide-react';
 
+const AUDIENCE_LABELS: Record<string, string> = {
+  engineers: '技術者',
+  general: '一般',
+  internal: 'コンプライアンス',
+  executives: 'ビジネス',
+};
+
 export function PersonaView() {
   const {
     personaResult,
@@ -27,7 +34,7 @@ export function PersonaView() {
     return (
       <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8">
         <Loader2 className="w-8 h-8 animate-spin mb-4" />
-        <p>Running persona review...</p>
+        <p>Running audience review...</p>
       </div>
     );
   }
@@ -37,7 +44,7 @@ export function PersonaView() {
       <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8">
         <User className="w-12 h-12 mb-4" />
         <p className="text-center">
-          Persona review will start automatically.
+          Audience review will start automatically.
         </p>
       </div>
     );
@@ -46,7 +53,7 @@ export function PersonaView() {
   if (!personaResult) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8">
-        <p>No persona review results available.</p>
+        <p>No audience review results available.</p>
       </div>
     );
   }
@@ -58,7 +65,7 @@ export function PersonaView() {
         <div className="flex items-center gap-2 text-gray-600">
           <User className="w-5 h-5" />
           <span className="font-medium capitalize">
-            Audience: {personaResult.audience}
+            Audience: {AUDIENCE_LABELS[personaResult.audience]}
           </span>
         </div>
 
