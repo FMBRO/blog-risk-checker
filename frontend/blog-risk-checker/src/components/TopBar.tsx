@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Shield, Download, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
+import { ExportModal } from './ExportModal';
 import clsx from 'clsx';
 
 export function TopBar() {
@@ -12,10 +14,16 @@ export function TopBar() {
     report,
     runCheck,
     runRecheck,
+    runRelease,
+    releaseStatus,
   } = useAppStore();
 
+  const [showExportModal, setShowExportModal] = useState(false);
+
   const isRunning = checkStatus === 'running';
+  const isReleasing = releaseStatus === 'running';
   const hasUncheckedChanges = !isAutosaved && checkId !== null;
+  const canExport = report?.verdict === 'ok';
 
   const handleCheck = () => {
     if (checkId) {
@@ -25,7 +33,12 @@ export function TopBar() {
     }
   };
 
-  const canExport = report?.verdict === 'ok';
+  const handleExport = async () => {
+    const result = await runRelease();
+    if (result) {
+      setShowExportModal(true);
+    }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -77,18 +90,33 @@ export function TopBar() {
         </button>
 
         <button
-          disabled={!canExport}
+          onClick={handleExport}
+          disabled={!canExport || isReleasing}
           className={clsx(
             'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-            canExport
+            canExport && !isReleasing
               ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           )}
         >
-          <Download className="w-4 h-4" />
-          Export
+          {isReleasing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Export
+            </>
+          )}
         </button>
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <ExportModal onClose={() => setShowExportModal(false)} />
+      )}
     </header>
   );
 }

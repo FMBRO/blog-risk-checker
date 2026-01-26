@@ -73,6 +73,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   personaResult: null,
   personaStatus: 'idle',
 
+  // Release/Export
+  releaseResult: null,
+  releaseStatus: 'idle',
+
+  // Toast
+  toastMessage: null,
+
   // Basic setters
   setProjectName: (name: string) => set({ projectName: name }),
   setDocTitle: (title: string) => set({ docTitle: title }),
@@ -118,6 +125,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPersonaResult: (result: PersonaReview | null) => set({ personaResult: result }),
   setPersonaStatus: (status: CheckStatus) => set({ personaStatus: status }),
 
+  // Release/Export setters
+  setReleaseResult: (result: ReleaseResult | null) => set({ releaseResult: result }),
+  setReleaseStatus: (status: CheckStatus) => set({ releaseStatus: status }),
+  clearReleaseResult: () => set({ releaseResult: null, releaseStatus: 'idle' }),
+
+  // Toast actions
+  showToast: (message: string) => {
+    set({ toastMessage: message });
+    setTimeout(() => {
+      set((state) => (state.toastMessage === message ? { toastMessage: null } : {}));
+    }, 2000);
+  },
+  clearToast: () => set({ toastMessage: null }),
+
   // Async Actions
   runCheck: async () => {
     const { editorText, settings } = get();
@@ -130,6 +151,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         report: result.report,
         checkStatus: 'success',
         isAutosaved: true,
+        // Clear release cache when new check is performed
+        releaseResult: null,
+        releaseStatus: 'idle',
       });
     } catch (error) {
       const message = error instanceof ApiError
@@ -154,6 +178,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         report: result.report,
         checkStatus: 'success',
         isAutosaved: true,
+        // Clear release cache when recheck is performed
+        releaseResult: null,
+        releaseStatus: 'idle',
       });
     } catch (error) {
       const message = error instanceof ApiError
@@ -266,21 +293,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   runRelease: async (): Promise<ReleaseResult | null> => {
-    const { checkId, editorText, settings, report } = get();
+    const { checkId, editorText, settings, report, releaseResult, releaseStatus } = get();
+
+    // Return cached result if available and valid
+    if (releaseResult && releaseStatus === 'success') {
+      return releaseResult;
+    }
 
     if (!checkId || report?.verdict !== 'ok') {
       set({ errorMessage: 'Release conditions not met. Verdict must be "ok".' });
       return null;
     }
 
+    set({ releaseStatus: 'running', errorMessage: null });
+
     try {
       const result = await release(checkId, editorText, settings);
+      set({
+        releaseResult: result,
+        releaseStatus: 'success',
+      });
       return result;
     } catch (error) {
       const message = error instanceof ApiError
         ? error.detail.message
         : 'Failed to release';
-      set({ errorMessage: message });
+      set({ releaseStatus: 'error', errorMessage: message });
       return null;
     }
   },

@@ -151,6 +151,13 @@ export interface AppState {
   personaResult: PersonaReview | null;
   personaStatus: CheckStatus;
 
+  // Release/Export
+  releaseResult: ReleaseResult | null;
+  releaseStatus: CheckStatus;
+
+  // Toast
+  toastMessage: string | null;
+
   // Actions
   setProjectName: (name: string) => void;
   setDocTitle: (title: string) => void;
@@ -176,4 +183,13 @@ export interface AppState {
   setErrorMessage: (message: string | null) => void;
   setPersonaResult: (result: PersonaReview | null) => void;
   setPersonaStatus: (status: CheckStatus) => void;
+
+  // Release/Export actions
+  setReleaseResult: (result: ReleaseResult | null) => void;
+  setReleaseStatus: (status: CheckStatus) => void;
+  clearReleaseResult: () => void;
+
+  // Toast actions
+  showToast: (message: string) => void;
+  clearToast: () => void;
 }

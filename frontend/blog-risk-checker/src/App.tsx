@@ -1,7 +1,13 @@
 import { AppShell } from './components/AppShell';
+import { Toast } from './components/Toast';
 
 function App() {
-  return <AppShell />;
+  return (
+    <>
+      <AppShell />
+      <Toast />
+    </>
+  );
 }
 
 export default App;

@@ -196,6 +196,11 @@
 - `onSelectFinding(id)`
   - `selectedFindingId` 更新
   - エディタ側で該当テキスト箇所へスクロールし、強調表示する
+- `onClickExport()`
+  - `releaseStatus` を "running" に更新
+  - `/v1/release` を呼び出し
+  - 成功: `releaseResult` を保存、Exportメニューを表示
+  - 失敗: エラーメッセージを表示、`releaseStatus` を "error" に更新
 
 ---
 
@@ -256,6 +261,7 @@
 - `checkId: string | null`
 - `report: Report | null`
 - `personaResult: PersonaReview | null`
+- `releaseResult: ReleaseResult | null`
 - `activeTab: "findings" | "persona"`
 - `severityFilter: "all" | "high" | "low"`
 - `selectedFindingId: string | null`
@@ -338,7 +344,7 @@ checkId が無い場合：Patch操作はdisabled（MVP）
 
 ---
 
-14.4 POST /v1/release（最終出力）
+### 14.4 POST /v1/release（最終出力）
 
 用途
 
@@ -371,15 +377,15 @@ Response
 
 UI制御
 
-report.verdict !== "ok"：Release disabled + tooltip
-
-409：release requires report.verdict === 'ok' を表示し、再修正を促す
-
-
+- report.verdict !== "ok"：Export disabled + tooltip「Verdict must be OK to export」
+- 実行中：Export disabled + spinner、`releaseStatus: "running"`
+- 成功：`releaseResult` をstateへ保存、Exportメニュー/モーダルを表示、`releaseStatus: "success"`
+- 失敗：エラーバナー表示（message表示）、`releaseStatus: "error"`
+- 409：「release requires report.verdict === 'ok'」を表示し、再修正を促す
 
 ---
 
-14.5 POST /v1/persona-review（ペルソナレビュー）
+### 14.5 POST /v1/persona-review（ペルソナレビュー）
 
 用途
 
@@ -410,7 +416,7 @@ personaResult.items をカード一覧として描画する（FindingsとUI共�
 
 ---
 
-15. 型定義（TypeScript想定）
+## 15. 型定義（TypeScript想定）
 
 Settings
 
@@ -453,10 +459,23 @@ items[]: { id, severity, title, reason, suggestion, highlights[] }
   - highlights[]: { text, context }
 
 
+ReleaseResult（/v1/release）
+
+releaseId: string
+
+verdict: "ok"
+
+safeMarkdown: string（安全化されたMarkdown本文）
+
+fixSummary: string[]（修正内容のサマリリスト）
+
+checklist: string[]（公開前チェックリスト）
+
+publishedScope: "public"|"unlisted"|"private"|"internal"
 
 ---
 
-16. Severityフィルタ集約ルール（UI: All / High / Low）
+## 16. Severityフィルタ集約ルール（UI: All / High / Low）
 
 サーバ：low / medium / high / critical
 UI：All / High / Low の3段階
@@ -476,7 +495,7 @@ All：全件
 
 ---
 
-17. ハイライト適用仕様（Editor）
+## 17. ハイライト適用仕様（Editor）
 
 テキスト一致仕様
 
@@ -502,9 +521,9 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 
 ---
 
-18. 画面の操作フロー（API結合）
+## 18. 画面の操作フロー（API結合）
 
-18.1 Check
+### 18.1 Check
 
 1. POST /v1/checks（checkId が無い場合）
 
@@ -516,7 +535,7 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 
 
 
-18.2 Patch → Apply → Recheck
+### 18.2 Patch → Apply → Recheck
 
 1. 指摘カードのApply → POST /v1/patches
 
@@ -531,7 +550,7 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 
 
 
-18.3 Persona
+### 18.3 Persona
 
 1. Personaタブ表示 → POST /v1/persona-review
 
@@ -540,7 +559,7 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 
 
 
-18.4 Release
+###　18.4 Release
 
 1. report.verdict === "ok" のときだけ POST /v1/release
 
@@ -551,11 +570,33 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 3. ExportメニューでコピーやDLなどの出力を行う（フロント側）
 
 
+### 18.5 Export メニュー仕様
+
+#### メニュー項目
+1. **Copy Markdown** - `safeMarkdown` をクリップボードにコピー
+2. **Download Markdown** - `safeMarkdown` を `.md` ファイルとしてダウンロード（ファイル名: `{docTitle}-safe.md`）
+3. **Copy Checklist** - `checklist` をクリップボードにコピー（改行区切り）
+
+#### 表示内容（メニュー/モーダル内）
+- **Fix Summary**: `fixSummary` の各項目を箇条書きで表示（修正内容の確認用）
+- **Checklist**: `checklist` の各項目をチェックボックス付きで表示（公開前確認用）
+
+#### UI挙動
+- Exportボタンクリック → `runRelease()` 実行
+- 実行中: ボタンにスピナー表示
+- 成功時: ドロップダウンメニューまたはモーダルで出力オプションを表示
+- コピー成功時: トースト通知「Copied to clipboard」を表示（2秒で自動消去）
+- ダウンロード: ブラウザのダウンロード機能を使用
+
+#### 状態管理
+- `releaseStatus`: 実行状態の管理
+- `releaseResult`: API結果の保存（再利用可能）
+- 一度取得した `releaseResult` は `checkId` が変わるまでキャッシュ可能
 
 
 ---
 
-19. エラーハンドリング仕様
+## 19. エラーハンドリング仕様
 
 方針
 
@@ -580,7 +621,7 @@ detail.error はログや開発者向け表示に使う。
 
 ---
 
-20. ReactコンポーネントとAPIの接続点（最小）
+## 20. ReactコンポーネントとAPIの接続点（最小）
 
 CheckButton → createCheck() / recheck()
 
@@ -883,7 +924,5 @@ low | medium | high | critical
 category（例）
 
 privacy | security | legal | compliance | safety | reputation | quality
-
-
 
 ---
