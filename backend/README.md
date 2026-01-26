@@ -90,7 +90,7 @@ Markdownテキストを受け取り、リスク分析レポートを返します
 - **Response**: `checkId`, `report`
 
 #### 4. 公開用整形: `POST /v1/release`
-評価が `ok` の場合のみ実行可能です。公開用に整形されたMarkdownとチェックリストを返します。
+評価スコアが `70` 以上の場合のみ実行可能です。公開用に整形されたMarkdownとチェックリストを返します。
 - **Request**: `checkId`, `text`, `settings`
 - **Response**: `safeMarkdown`, `fixSummary`, `checklist`
 

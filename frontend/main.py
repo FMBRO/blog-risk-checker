@@ -545,9 +545,9 @@ async def release(req: ReleaseRequest):
         raise http_error(404, "NOT_FOUND", "checkId not found")
 
     report = saved.get("report")
-    verdict = (report or {}).get("verdict")
-    if verdict != "ok":
-        raise http_error(409, "NOT_OK", "release requires report.verdict === 'ok'")
+    score = (report or {}).get("score", 0)
+    if score < 70:
+        raise http_error(409, "LOW_SCORE", "release requires report.score >= 70")
 
     prompt = (
         f"[checkId]\n{req.checkId}\n\n"

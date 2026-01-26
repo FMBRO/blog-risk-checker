@@ -366,7 +366,7 @@ checkId が無い場合：Patch操作はdisabled（MVP）
 
 用途
 
-report.verdict === "ok" のときだけ呼べる（サーバも 409 で拒否）。
+report.score >= 70 のときだけ呼べる（サーバも 409 で拒否）。
 
 safeMarkdown / fixSummary / checklist を受け取り、Release表示に使う。
 
@@ -395,11 +395,11 @@ Response
 
 UI制御
 
-- report.verdict !== "ok"：Export disabled + tooltip「Verdict must be OK to export」
+- report.score < 70：Export disabled + tooltip「Score must be >= 70 to export」
 - 実行中：Export disabled + spinner、`releaseStatus: "running"`
 - 成功：`releaseResult` をstateへ保存、Exportメニュー/モーダルを表示、`releaseStatus: "success"`
 - 失敗：エラーバナー表示（message表示）、`releaseStatus: "error"`
-- 409：「release requires report.verdict === 'ok'」を表示し、再修正を促す
+- 409：「release requires report.score >= 70」を表示し、再修正を促す
 
 ---
 
@@ -579,7 +579,7 @@ selectedFindingId と一致するハイライトを強調（枠線 / 濃い背�
 
 ###　18.4 Release
 
-1. report.verdict === "ok" のときだけ POST /v1/release
+1. report.score >= 70 のときだけ POST /v1/release
 
 
 2. safeMarkdown / fixSummary / checklist を表示
@@ -693,7 +693,7 @@ detail.error はログや開発者向け表示に使う。
 
 404 NOT_FOUND：checkId / findingId 不一致
 
-409 NOT_OK：Release条件未達（verdict が ok でない）
+409 LOW_SCORE：Release条件未達（Score < 70）
 
 502 BAD_MODEL_OUTPUT：モデル出力不正（JSONでない）
 
@@ -751,7 +751,7 @@ uvicorn main:app --reload --port 8000
 
 /v1/patches は checkId と findingId が必要です。サーバは CHECK_STORE から finding を引きます（MVP仕様）。
 
-/v1/release は 保存済みレポートの verdict が ok の場合のみ成功します（UIのボタン制御と一致）。
+/v1/release は 保存済みレポートの score >= 70 の場合のみ成功します（UIのボタン制御と一致）。
 
 ## 共通
 

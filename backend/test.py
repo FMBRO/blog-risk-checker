@@ -13,7 +13,7 @@ test.py
   python test.py --base-url http://localhost:8000 --md sample_blog.md --mock off
 
 注意:
-- /v1/release は "保存済み report の verdict が ok" のときのみ成功します。
+- /v1/release は "保存済み report の score >= 70" のときのみ成功します。
   そのため、このスクリプトは patch を全 finding に対して適用 → recheck → ok なら release を試行します。
 """
 
@@ -162,12 +162,13 @@ def run_flow(text: str, cfg: FlowConfig) -> None:
     recheck_res = post_json(cfg.base_url, f"/v1/checks/{check_id}/recheck", recheck_req)
     new_report = recheck_res.get("report", {})
     verdict = new_report.get("verdict")
-    print(pretty({"checkId": check_id, "verdict": verdict, "score": new_report.get("score"), "totalFindings": new_report.get("summary", {}).get("totalFindings")}))
+    score = new_report.get("score", 0)
+    print(pretty({"checkId": check_id, "verdict": verdict, "score": score, "totalFindings": new_report.get("summary", {}).get("totalFindings")}))
 
-    # 5) release (only if ok)
-    print("\n=== 5) POST /v1/release (only if verdict==ok)")
-    if verdict != "ok":
-        print("[info] verdict is not ok. skip release.")
+    # 5) release (only if score >= 70)
+    print("\n=== 5) POST /v1/release (only if score >= 70)")
+    if score < 70:
+        print(f"[info] score {score} < 70. skip release.")
         return
 
     release_req = {"checkId": check_id, "text": working_text, "settings": cfg.settings, "config": {"mock": cfg.mock}}

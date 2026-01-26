@@ -304,8 +304,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return releaseResult;
     }
 
-    if (!checkId || report?.verdict !== 'ok') {
-      set({ errorMessage: 'Release conditions not met. Verdict must be "ok".' });
+    if (!checkId || (report?.score ?? 0) < 70) {
+      set({ errorMessage: 'Release conditions not met. Score must be 70 or higher.' });
       return null;
     }
 

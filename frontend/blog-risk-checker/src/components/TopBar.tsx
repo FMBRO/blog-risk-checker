@@ -23,7 +23,7 @@ export function TopBar() {
   const isRunning = checkStatus === 'running';
   const isReleasing = releaseStatus === 'running';
   const hasUncheckedChanges = !isAutosaved && checkId !== null;
-  const canExport = report?.verdict === 'ok';
+  const canExport = (report?.score ?? 0) >= 70;
 
   const handleCheck = () => {
     if (checkId) {
