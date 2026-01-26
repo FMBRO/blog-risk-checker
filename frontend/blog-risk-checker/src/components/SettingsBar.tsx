@@ -40,10 +40,10 @@ export function SettingsBar() {
               onChange={(e) => setSettings({ publishScope: e.target.value as PublishScope })}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="public">Public</option>
-              <option value="unlisted">Unlisted</option>
-              <option value="private">Private</option>
-              <option value="internal">Internal</option>
+              <option value="public">公開</option>
+              <option value="unlisted">限定公開</option>
+              <option value="private">非公開</option>
+              <option value="internal">社内のみ</option>
             </select>
           </div>
 
@@ -56,9 +56,9 @@ export function SettingsBar() {
               onChange={(e) => setSettings({ tone: e.target.value as Tone })}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="technical">Technical</option>
-              <option value="casual">Casual</option>
-              <option value="formal">Formal</option>
+              <option value="technical">技術的</option>
+              <option value="casual">カジュアル</option>
+              <option value="formal">フォーマル</option>
             </select>
           </div>
 
@@ -71,25 +71,25 @@ export function SettingsBar() {
               onChange={(e) => setSettings({ audience: e.target.value as Audience })}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="engineers">Engineers</option>
-              <option value="general">General</option>
-              <option value="internal">Internal</option>
-              <option value="executives">Executives</option>
+              <option value="engineers">技術者</option>
+              <option value="general">一般</option>
+              <option value="internal">コンプライアンス</option>
+              <option value="executives">ビジネス</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">
-              Redact Mode
+              個人情報検閲レベル
             </label>
             <select
               value={settings.redactMode}
               onChange={(e) => setSettings({ redactMode: e.target.value as RedactMode })}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="none">None</option>
-              <option value="light">Light</option>
-              <option value="strict">Strict</option>
+              <option value="none">なし</option>
+              <option value="light">低い</option>
+              <option value="strict">高い</option>
             </select>
           </div>
         </div>
