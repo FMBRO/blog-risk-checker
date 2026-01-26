@@ -392,6 +392,7 @@ CHECK_SYSTEM = """
 入力Markdownを精査し、個人情報・セキュリティ・法務/コンプライアンスの観点で指摘を作成してください。
 返答は response_schema に厳密に従い、JSONのみを返してください。
 severity は low/medium/high/critical を使ってください。
+findingsのtitleは問題の要約、reasonは説明、suggestionは修正案を日本語で提案してください。
 findings.highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
 highlights.items は findings の highlights と対応させてください（findingId, text）。
 """
@@ -413,6 +414,7 @@ PERSONA_SYSTEM = """
 あなたは audience に合わせたレビューアです。
 audience に応じた観点（例: engineersなら技術的正確性、generalなら分かりやすさ、executivesならビジネス価値）で Markdown を評価し、指摘を items に列挙してください。
 返答は JSON のみです。severity は仕様通りです。
+itemsのtitleは問題の要約、reasonは説明、suggestionは修正案を日本語で提案してください。
 highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
 """
 
