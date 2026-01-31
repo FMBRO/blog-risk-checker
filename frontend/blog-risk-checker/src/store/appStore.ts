@@ -53,6 +53,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // 設定
   settings: defaultSettings,
 
+  // API Key（env var をデフォルト値として使用）
+  apiKey: (import.meta.env.VITE_API_KEY as string) || '',
+
   // エディタ
   editorText: defaultText,
 
@@ -85,6 +88,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDocTitle: (title: string) => set({ docTitle: title }),
 
   setEditorText: (text: string) => set({ editorText: text, isAutosaved: false }),
+
+  setApiKey: (key: string) => set({ apiKey: key }),
 
   setSettings: (newSettings: Partial<CheckSettings>) =>
     set((state) => {
@@ -145,11 +150,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Async Actions
   runCheck: async () => {
-    const { editorText, settings } = get();
+    const { editorText, settings, apiKey } = get();
     set({ checkStatus: 'running', errorMessage: null });
 
     try {
-      const result = await createCheck(editorText, settings);
+      const result = await createCheck(editorText, settings, { apiKey: apiKey || undefined });
       set({
         checkId: result.checkId,
         report: result.report,
@@ -168,7 +173,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   runRecheck: async () => {
-    const { checkId, editorText, settings } = get();
+    const { checkId, editorText, settings, apiKey } = get();
     if (!checkId) {
       // checkIdがない場合は新規チェック
       return get().runCheck();
@@ -177,7 +182,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ checkStatus: 'running', errorMessage: null });
 
     try {
-      const result = await recheck(checkId, editorText, settings);
+      const result = await recheck(checkId, editorText, settings, { apiKey: apiKey || undefined });
       set({
         report: result.report,
         checkStatus: 'success',
@@ -195,7 +200,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyPatch: async (findingId: string, deleteMode: boolean = false) => {
-    const { checkId, editorText, report } = get();
+    const { checkId, editorText, report, apiKey } = get();
 
     // Finding を report から削除するヘルパー関数
     const removeFindingFromReport = () => {
@@ -255,7 +260,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ errorMessage: null });
 
     try {
-      const result = await createPatch(checkId, findingId, editorText);
+      const result = await createPatch(checkId, findingId, editorText, { apiKey: apiKey || undefined });
       const { originalText, replacement } = result.apply;
 
       // テキストを更新 (最初の1件のみ置換)
@@ -279,11 +284,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   runPersonaReview: async () => {
-    const { editorText, settings } = get();
+    const { editorText, settings, apiKey } = get();
     set({ personaStatus: 'running', errorMessage: null });
 
     try {
-      const result = await personaReview(editorText, settings);
+      const result = await personaReview(editorText, settings, { apiKey: apiKey || undefined });
       set({
         personaResult: result,
         personaStatus: 'success',
@@ -297,7 +302,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   runRelease: async (): Promise<ReleaseResult | null> => {
-    const { checkId, editorText, settings, report, releaseResult, releaseStatus } = get();
+    const { checkId, editorText, settings, report, releaseResult, releaseStatus, apiKey } = get();
 
     // Return cached result if available and valid
     if (releaseResult && releaseStatus === 'success') {
@@ -312,7 +317,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ releaseStatus: 'running', errorMessage: null });
 
     try {
-      const result = await release(checkId, editorText, settings);
+      const result = await release(checkId, editorText, settings, { apiKey: apiKey || undefined });
       set({
         releaseResult: result,
         releaseStatus: 'success',

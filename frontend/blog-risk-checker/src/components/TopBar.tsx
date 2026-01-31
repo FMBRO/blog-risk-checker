@@ -6,8 +6,6 @@ import clsx from 'clsx';
 
 export function TopBar() {
   const {
-    projectName,
-    docTitle,
     isAutosaved,
     checkStatus,
     checkId,

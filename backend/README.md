@@ -27,16 +27,13 @@ pip install -r requirements.txt
 ```
 ※ `requirements.txt` がない場合は `fastapi uvicorn google-genai python-dotenv requests` などをインストールしてください。
 
-### 2. 環境変数の設定
-
-`.env` ファイルを作成し、以下の変数を設定してください。
-
-| 変数名 | 説明 | 必須 | デフォルト値 |
-|Text|Text|Text|Text|
-| `GOOGLE_CLOUD_PROJECT` | Google Cloud プロジェクトID | YES | - |
-| `GOOGLE_CLOUD_LOCATION` | Vertex AI リージョン | NO | `us-central1` |
-| `GEMINI_MODEL` | 使用するモデルID | NO | `gemini-2.5-flash` |
-| `MOCK` | モックモードの強制有効化 (`1` or `true`) | NO | - |
+### 2. 環境変数の設定 (`.env` ファイルまたはシェルで設定)
+   ```bash
+   export GOOGLE_CLOUD_PROJECT="your-project-id"
+   export GOOGLE_CLOUD_LOCATION="us-central1"
+   # 必要に応じて
+   export GEMINI_MODEL="gemini-2.5-flash"
+   ```
 
 ## 実行方法
 

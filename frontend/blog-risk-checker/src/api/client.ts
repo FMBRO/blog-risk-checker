@@ -25,12 +25,17 @@ interface ApiConfig {
 
 // APIエラークラス
 export class ApiError extends Error {
+  statusCode: number;
+  detail: { message: string; code?: string };
+
   constructor(
-    public statusCode: number,
-    public detail: { message: string; code?: string }
+    statusCode: number,
+    detail: { message: string; code?: string }
   ) {
     super(detail.message);
     this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.detail = detail;
   }
 }
 
@@ -62,7 +67,7 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    let detail = { message: 'Unknown error occurred' };
+    let detail: { message: string; code?: string } = { message: 'Unknown error occurred' };
 
     try {
       const errorData = await response.json();

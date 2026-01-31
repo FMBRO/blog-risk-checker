@@ -131,6 +131,9 @@ export interface AppState {
   // 設定
   settings: CheckSettings;
 
+  // API Key
+  apiKey: string;
+
   // エディタ
   editorText: string;
 
@@ -162,6 +165,7 @@ export interface AppState {
   setProjectName: (name: string) => void;
   setDocTitle: (title: string) => void;
   setEditorText: (text: string) => void;
+  setApiKey: (key: string) => void;
   setSettings: (settings: Partial<CheckSettings>) => void;
   setActiveTab: (tab: TabType) => void;
   setSeverityFilter: (filter: SeverityFilter) => void;

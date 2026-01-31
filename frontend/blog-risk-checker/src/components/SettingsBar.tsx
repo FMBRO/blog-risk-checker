@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp, Settings, Eye, EyeOff } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import type { PublishScope, Tone, Audience, RedactMode } from '../types';
 
@@ -23,7 +24,8 @@ const AUDIENCE_LABELS: Record<string, string> = {
 };
 
 export function SettingsBar() {
-  const { settings, setSettings, settingsExpanded, toggleSettingsExpanded, viewMode, setViewMode } = useAppStore();
+  const { settings, setSettings, settingsExpanded, toggleSettingsExpanded, viewMode, setViewMode, apiKey, setApiKey } = useAppStore();
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const summaryText = `${PUBLISH_SCOPE_LABELS[settings.publishScope]} / ${TONE_LABELS[settings.tone]} / ${AUDIENCE_LABELS[settings.audience]}`;
 
@@ -71,7 +73,32 @@ export function SettingsBar() {
 
       {/* 展開時の設定パネル */}
       {settingsExpanded && (
-        <div className="px-4 py-3 bg-white border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="px-4 py-3 bg-white border-t border-gray-200 space-y-3">
+          {/* API Key 入力 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showApiKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="VITE_API_KEY or enter here"
+                className="w-full px-2 py-1.5 pr-9 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowApiKey(!showApiKey)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* 設定グリッド */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">
               Publish Scope
@@ -132,6 +159,7 @@ export function SettingsBar() {
               <option value="light">低い</option>
               <option value="strict">高い</option>
             </select>
+          </div>
           </div>
         </div>
       )}
