@@ -431,9 +431,30 @@ def format_settings(s: CheckSettings) -> str:
 # =========================
 # FastAPI
 # =========================
-app = FastAPI(title="Blog Risk Checker API", version="0.2.0")
-
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
+from fastapi import Security, Depends, HTTPException, status
+
+# API Key Auth
+API_KEY_NAME = "x-api-key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_api_key(api_key_header: str = Security(api_key_header)):
+    expected_api_key = os.getenv("API_KEY")
+    # Only enforce if API_KEY is set in environment (e.g. Cloud Run)
+    if expected_api_key:
+        if not api_key_header or api_key_header != expected_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Could not validate credentials",
+            )
+    return api_key_header
+
+app = FastAPI(
+    title="Blog Risk Checker API", 
+    version="0.2.0",
+    dependencies=[Depends(get_api_key)]
+)
 
 app.add_middleware(
     CORSMiddleware,

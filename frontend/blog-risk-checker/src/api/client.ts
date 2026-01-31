@@ -1,3 +1,4 @@
+// client.ts
 import type {
   CheckSettings,
   Report,
@@ -7,11 +8,19 @@ import type {
 } from '../types';
 
 // API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+// API KEY（Vite env）
+const API_KEY: string | undefined = import.meta.env.VITE_API_KEY;
+// 送信ヘッダ名（必要なら env で差し替え可能）
+const API_KEY_HEADER: string =
+  import.meta.env.VITE_API_KEY_HEADER || 'X-API-Key';
 
 // API設定
 interface ApiConfig {
   signal?: AbortSignal;
+  apiKey?: string; // リクエスト単位で差し替えたい場合に使用
 }
 
 // APIエラークラス
@@ -33,10 +42,20 @@ async function apiFetch<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
+  const apiKey = config?.apiKey ?? API_KEY;
+  if (!apiKey) {
+    throw new ApiError(401, {
+      message: 'API key is missing. Set VITE_API_KEY.',
+      code: 'MISSING_API_KEY',
+    });
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      // API KEY を付与
+      [API_KEY_HEADER]: apiKey,
       ...options.headers,
     },
     signal: config?.signal,
@@ -47,10 +66,17 @@ async function apiFetch<T>(
 
     try {
       const errorData = await response.json();
-      detail = errorData.detail || { message: errorData.message || 'Request failed' };
+      detail = errorData.detail || {
+        message: errorData.message || 'Request failed',
+      };
     } catch {
-      // JSONパースに失敗した場合はデフォルトメッセージを使用
       switch (response.status) {
+        case 401:
+          detail = { message: 'Unauthorized', code: 'UNAUTHORIZED' };
+          break;
+        case 403:
+          detail = { message: 'Forbidden', code: 'FORBIDDEN' };
+          break;
         case 404:
           detail = { message: 'Resource not found', code: 'NOT_FOUND' };
           break;
@@ -80,10 +106,14 @@ export async function createCheck(
   settings: CheckSettings,
   config?: ApiConfig
 ): Promise<{ checkId: string; report: Report }> {
-  return apiFetch('/v1/checks', {
-    method: 'POST',
-    body: JSON.stringify({ text, settings }),
-  }, config);
+  return apiFetch(
+    '/v1/checks',
+    {
+      method: 'POST',
+      body: JSON.stringify({ text, settings }),
+    },
+    config
+  );
 }
 
 // 再チェック
@@ -93,10 +123,14 @@ export async function recheck(
   settings: CheckSettings,
   config?: ApiConfig
 ): Promise<{ report: Report }> {
-  return apiFetch(`/v1/checks/${checkId}/recheck`, {
-    method: 'POST',
-    body: JSON.stringify({ text, settings }),
-  }, config);
+  return apiFetch(
+    `/v1/checks/${checkId}/recheck`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ text, settings }),
+    },
+    config
+  );
 }
 
 // パッチ作成（修正提案の適用）
@@ -106,10 +140,14 @@ export async function createPatch(
   text: string,
   config?: ApiConfig
 ): Promise<PatchResult> {
-  return apiFetch('/v1/patches', {
-    method: 'POST',
-    body: JSON.stringify({ checkId, findingId, text }),
-  }, config);
+  return apiFetch(
+    '/v1/patches',
+    {
+      method: 'POST',
+      body: JSON.stringify({ checkId, findingId, text }),
+    },
+    config
+  );
 }
 
 // リリース（最終版の取得）
@@ -119,10 +157,14 @@ export async function release(
   settings: CheckSettings,
   config?: ApiConfig
 ): Promise<ReleaseResult> {
-  return apiFetch('/v1/release', {
-    method: 'POST',
-    body: JSON.stringify({ checkId, text, settings }),
-  }, config);
+  return apiFetch(
+    '/v1/release',
+    {
+      method: 'POST',
+      body: JSON.stringify({ checkId, text, settings }),
+    },
+    config
+  );
 }
 
 // ペルソナレビュー
@@ -131,8 +173,13 @@ export async function personaReview(
   settings: CheckSettings,
   config?: ApiConfig
 ): Promise<PersonaReview> {
-  return apiFetch('/v1/persona-review', {
-    method: 'POST',
-    body: JSON.stringify({ text, settings }),
-  }, config);
+  return apiFetch(
+    '/v1/persona-review',
+    {
+      method: 'POST',
+      body: JSON.stringify({ text, settings }),
+    },
+    config
+  );
 }
+

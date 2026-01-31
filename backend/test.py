@@ -19,12 +19,16 @@ test.py
 
 from __future__ import annotations
 
+import os
 import argparse
 import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import requests
 
@@ -53,7 +57,14 @@ DEFAULT_SETTINGS = {
 # -------------------------
 def post_json(base_url: str, path: str, payload: Dict[str, Any], timeout: int = 300) -> Dict[str, Any]:
     url = base_url.rstrip("/") + path
-    r = requests.post(url, json=payload, timeout=timeout)
+    
+    headers = {}
+    # Read API_KEY from env
+    api_key = os.getenv("API_KEY")
+    if api_key:
+        headers["x-api-key"] = api_key
+
+    r = requests.post(url, json=payload, headers=headers, timeout=timeout)
     if not r.ok:
         # FastAPI detail={"error","message"} を優先表示
         try:

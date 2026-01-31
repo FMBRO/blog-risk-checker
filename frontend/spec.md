@@ -759,6 +759,9 @@ uvicorn main:app --reload --port 8000
 - `baseUrl` 未指定：`/v1/...`（同一オリジン）
 - `baseUrl` 指定：`{baseUrl}/v1/...`
 
+### API Key
+- `X-API-KEY` ヘッダで渡す
+
 ### 共通ヘッダ
 - Request: `Content-Type: application/json`
 - Response: `Content-Type: application/json`
