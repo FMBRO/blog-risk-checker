@@ -1,7 +1,10 @@
 import os
 import json
 import uuid
-from typing import Any, Dict, List, Literal, Optional
+import base64
+import asyncio
+import httpx
+from typing import Any, Dict, List, Literal, Optional, Tuple
 import re
 
 from fastapi import FastAPI, HTTPException, Path
@@ -128,6 +131,77 @@ def http_error(status: int, code: str, message: str) -> HTTPException:
     # UI側 fetchJson は error/message を優先する前提
     return HTTPException(status_code=status, detail={"error": code, "message": message})
 
+
+# =========================
+# Image processing helpers
+# =========================
+IMAGE_URL_PATTERN = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+
+def extract_image_urls(markdown: str) -> List[Tuple[str, str]]:
+    """
+    Markdownから画像URLを抽出する。
+    Returns: [(alt_text, url), ...]
+    """
+    return IMAGE_URL_PATTERN.findall(markdown)
+
+
+async def download_image(url: str, timeout: float = 10.0) -> Optional[Tuple[bytes, str]]:
+    """
+    画像をダウンロードしてバイトデータとMIMEタイプを返す。
+    失敗した場合はNoneを返す。
+    """
+    try:
+
+        default_ua = "MyTool/1.0 (dev@company.com)"
+        user_agent = os.getenv("USER_AGENT", default_ua)
+        
+        headers = {
+            "User-Agent": user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+
+            # MIMEタイプを判定
+            content_type = resp.headers.get("content-type", "").lower()
+            if "png" in content_type:
+                mime_type = "image/png"
+            elif "gif" in content_type:
+                mime_type = "image/gif"
+            elif "webp" in content_type:
+                mime_type = "image/webp"
+            else:
+                mime_type = "image/jpeg"  # デフォルト
+
+            return resp.content, mime_type
+    except Exception as e:
+        print(f"[WARN] Failed to download image {url}: {e}")
+        return None
+
+
+async def fetch_images_from_markdown(markdown: str) -> List[Dict[str, Any]]:
+    """
+    Markdownから画像URLを抽出し、並列でダウンロードする。
+    Returns: [{"url": str, "alt": str, "data": bytes, "mime_type": str}, ...]
+    """
+    image_refs = extract_image_urls(markdown)
+    if not image_refs:
+        return []
+
+    async def fetch_one(alt: str, url: str) -> Optional[Dict[str, Any]]:
+        result = await download_image(url)
+        if result:
+            data, mime_type = result
+            return {"url": url, "alt": alt, "data": data, "mime_type": mime_type}
+        return None
+
+    tasks = [fetch_one(alt, url) for alt, url in image_refs]
+    results = await asyncio.gather(*tasks)
+    return [r for r in results if r is not None]
+
+
 async def gemini_json(system_instruction: str, user_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
     """
     Gemini に JSON 生成を要求し、辞書にして返す。
@@ -161,6 +235,56 @@ async def gemini_json(system_instruction: str, user_prompt: str, schema: Dict[st
             )
 
         raise http_error(500, "INTERNAL_ERROR", msg)
+
+
+async def gemini_json_multimodal(
+    system_instruction: str,
+    user_prompt: str,
+    images: List[Dict[str, Any]],
+    schema: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Gemini に画像を含むマルチモーダル入力でJSON生成を要求する。
+    images: [{"url": str, "alt": str, "data": bytes, "mime_type": str}, ...]
+    """
+    try:
+        # コンテンツを構築: テキスト + 画像
+        contents = [user_prompt]
+
+        for img in images:
+            # 画像データをbase64エンコードしてPartとして追加
+            img_part = types.Part.from_bytes(
+                data=img["data"],
+                mime_type=img["mime_type"]
+            )
+            contents.append(img_part)
+            # 画像の説明を追加
+            contents.append(f"\n[上記は画像: {img['alt'] or img['url']} ]\n")
+
+        resp = await client.models.generate_content(
+            model=MODEL_ID,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.2,
+                response_mime_type="application/json",
+                response_schema=schema,
+            ),
+        )
+        return json.loads(resp.text)
+
+    except json.JSONDecodeError:
+        raise http_error(502, "BAD_MODEL_OUTPUT", "Model returned non-JSON output")
+
+    except Exception as e:
+        msg = str(e)
+        if "429" in msg and "RESOURCE_EXHAUSTED" in msg:
+            raise HTTPException(
+                status_code=429,
+                detail={"error": "RESOURCE_EXHAUSTED", "message": msg},
+            )
+        raise http_error(500, "INTERNAL_ERROR", msg)
+
 
 def pick_finding(report: Dict[str, Any], finding_id: str) -> Optional[Dict[str, Any]]:
     for f in report.get("findings", []):
@@ -389,11 +513,38 @@ MOCK_RELEASE = {
 # =========================
 CHECK_SYSTEM = """
 あなたは技術ブログ公開前チェックのレビューアです。
-入力Markdownを精査し、個人情報・セキュリティ・法務/コンプライアンスの観点で指摘を作成してください。
+入力Markdownを精査し、個人情報・セキュリティ・法務/コンプライアンス・倫理の観点で指摘を作成してください。
+
+【重要】画像も含めて詳細にチェックしてください：
+
+1. 個人情報・プライバシー:
+   - 顔写真、名刺、住所、電話番号などが写っていないか
+   - 本人の同意なく使用されている可能性のある人物写真でないか
+
+2. セキュリティ:
+   - APIキー、パスワード、内部システムのスクリーンショットなどが写っていないか
+   - 機密情報や社内限定の情報が含まれていないか
+
+3. 著作権・ライセンス:
+   - 著作権で保護された画像を無断使用していないか
+   - 適切なライセンス（CC、パブリックドメインなど）の画像か
+   - 商用利用が制限されている画像でないか
+
+4. 倫理的問題・文化的コンテキスト:
+   - 画像が有名な画像や人物である場合、その画像の出典や歴史的背景を確認してください
+   - あなたの知識を活用し、画像に関連する倫理的な問題や論争がないか判断してください
+   - 不適切な出典を持つ画像、性的・差別的な文脈を持つ画像でないか
+   - 特定のコミュニティや業界で問題視されている画像でないか
+   - 画像を認識できた場合は、その背景や問題点を詳しく説明してください
+
+5. 画像内のコンテンツ:
+   - 画像内のテキストや図表に問題がないか
+   - 不適切な表現や差別的な内容が含まれていないか
+
 返答は response_schema に厳密に従い、JSONのみを返してください。
 severity は low/medium/high/critical を使ってください。
-findingsのtitleは問題の要約、reasonは説明、suggestionは修正案を日本語で提案してください。
-findings.highlights の text は問題のある箇所の原文そのままの文字列です。context は短い説明です。
+findingsのtitleは問題の要約、reasonは説明（画像の背景や文化的コンテキストも含めて詳しく）、suggestionは修正案を日本語で提案してください。
+findings.highlights の text は問題のある箇所の原文そのままの文字列です。画像の問題の場合は画像のURL（例: ![alt](url) の url 部分）を text に入れてください。context は短い説明です。
 highlights.items は findings の highlights と対応させてください（findingId, text）。
 """
 
@@ -473,7 +624,17 @@ async def create_check(req: CreateCheckRequest):
         return {"checkId": check_id, "report": MOCK_REPORT}
 
     prompt = f"[settings]\n{format_settings(req.settings)}\n[markdown]\n{req.text}\n"
-    report = await gemini_json(CHECK_SYSTEM, prompt, REPORT_SCHEMA)
+
+    # 画像URLを自動検出してダウンロード
+    images = await fetch_images_from_markdown(req.text)
+
+    if images:
+        # 画像がある場合はマルチモーダルでチェック
+        prompt += f"\n[images]\n{len(images)}枚の画像が含まれています。各画像の内容もチェックしてください。\n"
+        report = await gemini_json_multimodal(CHECK_SYSTEM, prompt, images, REPORT_SCHEMA)
+    else:
+        # 画像がない場合は従来通り
+        report = await gemini_json(CHECK_SYSTEM, prompt, REPORT_SCHEMA)
 
     check_id = new_check_id()
     CHECK_STORE[check_id] = {"text": req.text, "settings": req.settings.model_dump(), "report": report}
@@ -495,7 +656,17 @@ async def recheck(
         f"[settings]\n{format_settings(req.settings)}\n"
         f"[markdown]\n{req.text}\n"
     )
-    report = await gemini_json(CHECK_SYSTEM, prompt, REPORT_SCHEMA)
+
+    # 画像URLを自動検出してダウンロード
+    images = await fetch_images_from_markdown(req.text)
+
+    if images:
+        # 画像がある場合はマルチモーダルでチェック
+        prompt += f"\n[images]\n{len(images)}枚の画像が含まれています。各画像の内容もチェックしてください。\n"
+        report = await gemini_json_multimodal(CHECK_SYSTEM, prompt, images, REPORT_SCHEMA)
+    else:
+        # 画像がない場合は従来通り
+        report = await gemini_json(CHECK_SYSTEM, prompt, REPORT_SCHEMA)
 
     CHECK_STORE[checkId] = {"text": req.text, "settings": req.settings.model_dump(), "report": report}
     return {"checkId": checkId, "report": report}
