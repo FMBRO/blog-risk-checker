@@ -3,6 +3,7 @@ import { Shield, Download, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { ExportModal } from './ExportModal';
 import clsx from 'clsx';
+import logo from '../assets/logo.svg';
 
 export function TopBar() {
   const {
@@ -43,7 +44,7 @@ export function TopBar() {
       {/* 左側: アイコン + プロジェクト情報 */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-blue-600" />
+          <img src={logo} alt="Logo" className="w-6 h-6" />
           <span className="font-semibold text-gray-900">Blog Risk Checker</span>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500">

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Settings, Eye, EyeOff } from 'lucide-react';
+
+import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import type { PublishScope, Tone, Audience, RedactMode } from '../types';
 
@@ -24,8 +24,7 @@ const AUDIENCE_LABELS: Record<string, string> = {
 };
 
 export function SettingsBar() {
-  const { settings, setSettings, settingsExpanded, toggleSettingsExpanded, viewMode, setViewMode, apiKey, setApiKey } = useAppStore();
-  const [showApiKey, setShowApiKey] = useState(false);
+  const { settings, setSettings, settingsExpanded, toggleSettingsExpanded, viewMode, setViewMode } = useAppStore();
 
   const summaryText = `${PUBLISH_SCOPE_LABELS[settings.publishScope]} / ${TONE_LABELS[settings.tone]} / ${AUDIENCE_LABELS[settings.audience]}`;
 
