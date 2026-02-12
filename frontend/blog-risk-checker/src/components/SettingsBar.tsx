@@ -74,92 +74,69 @@ export function SettingsBar() {
       {/* 展開時の設定パネル */}
       {settingsExpanded && (
         <div className="px-4 py-3 bg-white border-t border-gray-200 space-y-3">
-          {/* API Key 入力 */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              API Key
-            </label>
-            <div className="relative">
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="VITE_API_KEY or enter here"
-                className="w-full px-2 py-1.5 pr-9 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
           {/* 設定グリッド */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Publish Scope
-            </label>
-            <select
-              value={settings.publishScope}
-              onChange={(e) => setSettings({ publishScope: e.target.value as PublishScope })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="public">公開</option>
-              <option value="unlisted">限定公開</option>
-              <option value="private">非公開</option>
-              <option value="internal">社内のみ</option>
-            </select>
-          </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Publish Scope
+              </label>
+              <select
+                value={settings.publishScope}
+                onChange={(e) => setSettings({ publishScope: e.target.value as PublishScope })}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="public">公開</option>
+                <option value="unlisted">限定公開</option>
+                <option value="private">非公開</option>
+                <option value="internal">社内のみ</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Tone
-            </label>
-            <select
-              value={settings.tone}
-              onChange={(e) => setSettings({ tone: e.target.value as Tone })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="technical">テクニカル</option>
-              <option value="casual">カジュアル</option>
-              <option value="formal">フォーマル</option>
-            </select>
-          </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Tone
+              </label>
+              <select
+                value={settings.tone}
+                onChange={(e) => setSettings({ tone: e.target.value as Tone })}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="technical">テクニカル</option>
+                <option value="casual">カジュアル</option>
+                <option value="formal">フォーマル</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Audience
-            </label>
-            <select
-              value={settings.audience}
-              onChange={(e) => setSettings({ audience: e.target.value as Audience })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="engineers">技術者</option>
-              <option value="general">一般</option>
-              <option value="internal">コンプライアンス</option>
-              <option value="executives">ビジネス</option>
-            </select>
-          </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Audience
+              </label>
+              <select
+                value={settings.audience}
+                onChange={(e) => setSettings({ audience: e.target.value as Audience })}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="engineers">技術者</option>
+                <option value="general">一般</option>
+                <option value="internal">コンプライアンス</option>
+                <option value="executives">ビジネス</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              個人情報検閲レベル
-            </label>
-            <select
-              value={settings.redactMode}
-              onChange={(e) => setSettings({ redactMode: e.target.value as RedactMode })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="none">なし</option>
-              <option value="light">低い</option>
-              <option value="strict">高い</option>
-            </select>
-          </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                個人情報検閲レベル
+              </label>
+              <select
+                value={settings.redactMode}
+                onChange={(e) => setSettings({ redactMode: e.target.value as RedactMode })}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="none">なし</option>
+                <option value="light">低い</option>
+                <option value="strict">高い</option>
+              </select>
+            </div>
           </div>
         </div>
       )}
