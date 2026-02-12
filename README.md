@@ -1,6 +1,6 @@
 # Blog Risk Checker
 
-このリポジトリは、第四回AIエージェントハッカソンで作成したアプリケーションです。
+このリポジトリは、第4回 Agentic AI Hackathon with Google Cloudで作成したアプリケーションです。
 
 ## 概要
 
