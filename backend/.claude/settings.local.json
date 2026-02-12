@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(dir /b \"c:\\\\Users\\\\yoshi\\\\Documents\\\\Antigravity\\\\AI_Agents_Hackson\\\\backend\")"
-    ]
-  }
-}
