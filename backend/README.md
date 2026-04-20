@@ -1,5 +1,13 @@
 # Backend Setup
 
+## Avtivate venv
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate  # Windowsの場合
+source .venv/bin/activate  # Mac/Linuxの場合
+```
+
 ## Install Dependencies
 
 To install the required dependencies, run the following command:
